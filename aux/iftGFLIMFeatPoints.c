@@ -7,7 +7,7 @@
 void usage()
 {
     printf(" Usage: \n");
-    printf("./iftCreateGFLIMGraph <P1> <P2> \n");
+    printf("iftGFLIMFeatPoints <P1> <P2> \n");
     printf("P1: image markers directory \n");
     printf("P2: model directory \n");
 }
@@ -23,20 +23,6 @@ void imageMarkersToGraphMarkers(char *labels_file, char *seeds_file, char *outpu
 
     int *foreground_count = (int *)calloc(num_nodes, sizeof(int));
     int *background_count = (int *)calloc(num_nodes, sizeof(int));
-    
-    /*
-    iftVoxel *centers = (iftVoxel *)calloc(num_nodes, sizeof(iftVoxel)); // real superpixel centers
-    iftVoxel *best_centers = (iftVoxel *)calloc(num_nodes, sizeof(iftVoxel)); // closest pixel to the center of the superpixel
-    float *best_distances = (float *)calloc(num_nodes, sizeof(float)); // distance to the closest labeled pixel to the center of the superpixel
-
-    for(int p = 0; p < num_nodes; p++) // init distances
-        best_distances[p] = FLT_MAX;
-    
-    for(int p = 0; p < label_img->n; p++) // compute real superpixel centers
-    {
-        centers[label_img->val[p] - 1].x += p % label_img->xsize;
-        centers[label_img->val[p] - 1].y += p / label_img->xsize;
-    }*/
 
     iftLabeledSet *tmp = S;
     while (tmp != NULL)
@@ -50,21 +36,8 @@ void imageMarkersToGraphMarkers(char *labels_file, char *seeds_file, char *outpu
         else
             background_count[label_img->val[p] - 1]++;
 
-        /*
-        // find the closest pixel to the center of the superpixel
-        float dist = iftDistanceEuclidean(centers[label_img->val[p] - 1], iftGetVoxelCoord(label_img, p));
-        if (dist < best_distances[label_img->val[p] - 1])
-        {
-            best_distances[label_img->val[p] - 1] = dist;
-            best_centers[label_img->val[p] - 1] = iftGetVoxelCoord(label_img, p);
-        }
-        */
-
         tmp = tmp->next;
     }
-
-    //free(centers);
-    //free(best_distances);
 
     iftDestroyImage(&label_img);
     iftDestroyLabeledSet(&S);
@@ -75,10 +48,8 @@ void imageMarkersToGraphMarkers(char *labels_file, char *seeds_file, char *outpu
         {
             if (foreground_count[p] > background_count[p])
                 iftUnionLabeledSetElemMarkerAndHandicap(&graph_seeds, p, 1, 1, 0);
-                //iftUnionLabeledSetElemMarkerAndHandicap(&graph_seeds, p, 1, 1, best_centers[p].x * label_img->ysize + best_centers[p].y);
             else
                 iftUnionLabeledSetElemMarkerAndHandicap(&graph_seeds, p, 0, 0, 0);
-                //iftUnionLabeledSetElemMarkerAndHandicap(&graph_seeds, p, 0, 0, best_centers[p].x * label_img->ysize + best_centers[p].y);
         }
     }
 
@@ -86,7 +57,6 @@ void imageMarkersToGraphMarkers(char *labels_file, char *seeds_file, char *outpu
     iftDestroyLabeledSet(&graph_seeds);
     free(foreground_count);
     free(background_count);
-    //free(best_centers);
 }
 
 int main(int argc, char *argv[])

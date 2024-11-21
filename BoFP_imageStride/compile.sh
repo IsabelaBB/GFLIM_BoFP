@@ -3,4 +3,4 @@ if [ "$#" -ne 1 ]; then
   exit 1
 fi
 
-make IFT_GPU=$1 iftGFLIMISCreateLayerModel iftGFLIMISEncodeMergedLayer iftGFLIMISEncodeMergedLayerBatch iftGFLIMISDecodeLayer
+make IFT_GPU=$1 iftGFLIMISCreateLayerModel iftGFLIMISEncodeMergedLayer iftGFLIMISEncodeMergedLayerBatch iftGFLIMISExtract iftGFLIMISDecodeLayer

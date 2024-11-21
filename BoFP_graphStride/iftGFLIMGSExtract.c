@@ -101,405 +101,6 @@ void LoadMergedModel(char *basepath, iftMatrix **K, float **bias, int *nkernels)
   fclose(fp);
 }
 
-float *AdaptiveWeightsOtsu(iftMImage *mimg)
-{
-  float *weight = iftAllocFloatArray(mimg->m);
-  float *mean = iftAllocFloatArray(mimg->m);
-  float *maxval = iftAllocFloatArray(mimg->m);
-
-  /* Normalize activations */
-  for (int b = 0; b < mimg->m; b++)
-  {
-    maxval[b] = iftMMaximumValue(mimg, b);
-  }
-
-  // #pragma omp parallel for shared(mimg, maxval)
-  for (int p = 0; p < mimg->n; p++)
-  {
-    for (int b = 0; b < mimg->m; b++)
-    {
-      if (maxval[b] > 0.0)
-        mimg->val[p][b] /= maxval[b];
-      else
-        mimg->val[p][b] = 0.0;
-    }
-  }
-  iftFree(maxval);
-
-  /* Estimate the mean activation per channel */
-
-  for (int p = 0; p < mimg->n; p++)
-  {
-    for (int b = 0; b < mimg->m; b++)
-    {
-      mean[b] += mimg->val[p][b];
-    }
-  }
-
-  // Just so it is easier to compute the otsu
-  iftImage *means_image = iftCreateImage(mimg->m, 1, 1);
-  float max_mean = 0.0;
-  for (int b = 0; b < mimg->m; b++)
-  {
-    mean[b] /= mimg->n;
-    means_image->val[b] = mean[b] * 255;
-    if (means_image->val[b] > max_mean)
-      max_mean = means_image->val[b];
-  }
-  if (max_mean > 0.0)
-  {
-
-    /* Estimate mean and standard deviation of the above mean activations */
-
-    float mu = 0.0, stdev = 0.0;
-    for (int b = 0; b < mimg->m; b++)
-    {
-      mu += mean[b];
-    }
-    mu /= mimg->m;
-
-    int means_otsu = iftOtsu(means_image);
-
-    for (int b = 0; b < mimg->m; b++)
-    {
-      stdev += (mean[b] - mu) * (mean[b] - mu);
-    }
-    stdev = sqrtf(stdev / mimg->m) * sqrtf(stdev / mimg->m);
-
-    float low_end, high_end;
-    if (means_otsu > 0.1)
-      low_end = means_otsu - stdev;
-    else
-      low_end = means_otsu;
-    high_end = means_otsu + stdev;
-
-    /* Estimate the weight of each channel */
-
-    for (int b = 0; b < mimg->m; b++)
-    {
-      iftImage *band = iftCreateImage(mimg->xsize, mimg->ysize, mimg->zsize);
-      for (int p = 0; p < band->n; p++)
-        band->val[p] = mimg->val[p][b] * 255;
-      float fg_proportion = 0;
-      int max_band = 0.0;
-      for (int p = 0; p < band->n; p++)
-      {
-        if (band->val[p] > max_band)
-          max_band = band->val[p];
-      }
-      if (max_band > 0.0)
-      {
-        int otsu_band = iftOtsu(band);
-
-        for (int p = 0; p < band->n; p++)
-        {
-          if (band->val[p] >= otsu_band)
-            fg_proportion += 1;
-        }
-        fg_proportion /= band->n;
-        if (mean[b] >= high_end && fg_proportion > 0.2)
-        {
-          weight[b] = -1.0;
-        }
-        else if (mean[b] <= low_end && fg_proportion < 0.1)
-        {
-          weight[b] = +1.0;
-        }
-        else
-        {
-          weight[b] = 0.0;
-        }
-      }
-      else
-      {
-        weight[b] = 0.0;
-      }
-    }
-  }
-  else
-  {
-    for (int b = 0; b < mimg->m; b++)
-      weight[b] = 0.0;
-  }
-
-  iftFree(mean);
-  iftDestroyImage(&means_image);
-
-  return (weight);
-}
-
-float *AdaptiveWeights2(iftMImage *mimg)
-{
-  float *weight = iftAllocFloatArray(mimg->m);
-  float *mean = iftAllocFloatArray(mimg->m);
-  float *maxval = iftAllocFloatArray(mimg->m);
-
-  /* Normalize activations */
-  for (int b = 0; b < mimg->m; b++)
-  {
-    maxval[b] = iftMMaximumValue(mimg, b);
-  }
-
-#pragma omp parallel for shared(mimg, maxval)
-  for (int p = 0; p < mimg->n; p++)
-  {
-    for (int b = 0; b < mimg->m; b++)
-    {
-      mimg->val[p][b] /= maxval[b];
-    }
-  }
-  iftFree(maxval);
-
-  /* Estimate the mean activation per channel */
-
-  for (int p = 0; p < mimg->n; p++)
-  {
-    for (int b = 0; b < mimg->m; b++)
-    {
-      mean[b] += mimg->val[p][b];
-    }
-  }
-
-  for (int b = 0; b < mimg->m; b++)
-  {
-    mean[b] /= mimg->n;
-  }
-
-  /* Estimate mean and standard deviation of the above mean activations */
-
-  float mu = 0.0, stdev = 0.0;
-  for (int b = 0; b < mimg->m; b++)
-  {
-    mu += mean[b];
-  }
-  mu /= mimg->m;
-
-  for (int b = 0; b < mimg->m; b++)
-  {
-    stdev += powf(mean[b] - mu, 2);
-  }
-  stdev = sqrtf(stdev / mimg->m) * sqrtf(stdev / mimg->m);
-
-  /* Estimate the weight of each channel */
-
-  for (int b = 0; b < mimg->m; b++)
-  {
-    if (mean[b] <= mu - stdev)
-    {
-      weight[b] = +1.0;
-    }
-    else
-    {
-      if (mean[b] >= mu + stdev)
-      {
-        weight[b] = -1.0;
-      }
-      else
-      {
-        weight[b] = 0.0;
-      }
-    }
-  }
-
-  iftFree(mean);
-
-  return (weight);
-}
-
-iftFImage *FixedWeightDecoder(iftMImage *mimg, float *weight)
-{
-  iftFImage *salie = iftCreateFImage(mimg->xsize, mimg->ysize, mimg->zsize);
-
-  /* decode layer */
-
-#pragma omp parallel for shared(salie, mimg, weight)
-  for (int p = 0; p < mimg->n; p++)
-  {
-    for (int b = 0; b < mimg->m; b++)
-    {
-      salie->val[p] += mimg->val[p][b] * weight[b];
-    }
-    if (salie->val[p] < 0)
-      salie->val[p] = 0; /* ReLU (Sigmoid?) */
-  }
-  return (salie);
-}
-
-iftFImage *AdaptiveDecoder1_(iftMImage *mimg)
-{
-  iftFImage *salie = iftCreateFImage(mimg->xsize, mimg->ysize, mimg->zsize);
-  float *weight = AdaptiveWeightsOtsu(mimg);
-
-  /* decode layer */
-  // #pragma omp parallel for shared(salie, mimg, weight)
-  for (int p = 0; p < mimg->n; p++)
-  {
-    for (int b = 0; b < mimg->m; b++)
-    {
-      salie->val[p] += mimg->val[p][b] * weight[b];
-    }
-    if (salie->val[p] < 0)
-      salie->val[p] = 0; /* ReLU (Sigmoid?) */
-  }
-
-  iftFree(weight);
-
-  return (salie);
-}
-
-iftFImage *AdaptiveDecoder2(iftMImage *mimg, float adj_radius, float *channel_label)
-{
-  iftFImage *salie = iftCreateFImage(mimg->xsize, mimg->ysize, mimg->zsize);
-  float *weight = iftAllocFloatArray(mimg->m);
-  float *maxval = iftAllocFloatArray(mimg->m);
-  int nobj = 0, nbkg = 0;
-
-  /* Normalize activations per channel */
-
-  for (int b = 0; b < mimg->m; b++)
-  {
-    maxval[b] = iftMMaximumValue(mimg, b);
-    if (channel_label[b] > 0)
-    { /* object channel */
-      nobj++;
-    }
-    else
-    { /* background channel */
-      nbkg++;
-    }
-  }
-
-  for (int p = 0; p < mimg->n; p++)
-  {
-    for (int b = 0; b < mimg->m; b++)
-    {
-      if (maxval[b] > IFT_EPSILON)
-        mimg->val[p][b] = mimg->val[p][b] / maxval[b];
-    }
-  }
-  iftFree(maxval);
-
-  /* Estimate saliency of each pixel */
-
-  iftAdjRel *A = NULL;
-  if (iftIs3DMImage(mimg))
-    A = iftSpheric(adj_radius);
-  else
-    A = iftCircular(adj_radius);
-
-  for (int p = 0; p < mimg->n; p++)
-  {
-
-    /* estimate mean and stdev of activations across channels */
-
-    float mean[2] = {0.0, 0.0}, var[2] = {0.0, 0.0};
-    iftVoxel u = iftMGetVoxelCoord(mimg, p);
-
-    for (int i = 0; i < A->n; i++)
-    {
-      iftVoxel v = iftGetAdjacentVoxel(A, u, i);
-
-      if (iftMValidVoxel(mimg, v))
-      {
-        int q = iftMGetVoxelIndex(mimg, v);
-
-        for (int b = 0; b < mimg->m; b++)
-        {
-          if (channel_label[b] > 0)
-          { /* object channel */
-            mean[0] += mimg->val[q][b];
-          }
-          else
-          { /* background channel */
-            mean[1] += mimg->val[q][b];
-          }
-        }
-      }
-    }
-    mean[0] /= (nobj * A->n);
-    mean[1] /= (nbkg * A->n);
-
-    for (int i = 0; i < A->n; i++)
-    {
-      iftVoxel v = iftGetAdjacentVoxel(A, u, i);
-
-      if (iftMValidVoxel(mimg, v))
-      {
-        int q = iftMGetVoxelIndex(mimg, v);
-
-        for (int b = 0; b < mimg->m; b++)
-        {
-          if (channel_label[b] > 0)
-          { /* object channel */
-            var[0] += powf(mimg->val[q][b] - mean[0], 2);
-          }
-          else
-          { /* background channel */
-            var[1] += powf(mimg->val[q][b] - mean[1], 2);
-          }
-        }
-      }
-    }
-    var[0] = var[0] / (nobj * A->n);
-    var[1] = var[1] / (nbkg * A->n);
-
-    /* It is expected two Gaussian distributions G0 and G1 of
-       activations around mean[0] and mean[1]. We may expect that
-       object pixels generate mean[0] >> mean[1] and the other way
-       around for background pixels. We may use the the probability
-       values of these distributions to estimate weights. */
-
-    float P0, P1;
-    for (int b = 0; b < mimg->m; b++)
-    {
-      if (var[0] > IFT_EPSILON)
-        P0 = exp(-powf(mimg->val[p][b] - mean[0], 2) / (2.0 * var[0]));
-      else
-      {
-        var[0] = 1.0;
-        P0 = exp(-powf(mimg->val[p][b] - mean[0], 2) / (2.0 * var[0]));
-      }
-      if (var[1] > IFT_EPSILON)
-        P1 = exp(-powf(mimg->val[p][b] - mean[1], 2) / (2.0 * var[1]));
-      else
-      {
-        var[1] = 1.0;
-        P1 = exp(-powf(mimg->val[p][b] - mean[1], 2) / (2.0 * var[1]));
-      }
-
-      if ((channel_label[b] > 0) && (P0 > P1))
-      {
-        weight[b] = 1; // P0;
-      }
-      else
-      {
-        if ((channel_label[b] < 0) && (P0 < P1))
-        {
-          weight[b] = -1; // P1
-        }
-        else
-        {
-          weight[b] = 0;
-        }
-      }
-    }
-
-    /* Estimate the salience map using one neuron per pixel -- it is
-       no longer a point-wise convolution */
-
-    for (int b = 0; b < mimg->m; b++)
-    {
-      salie->val[p] += mimg->val[p][b] * weight[b];
-    }
-    if (salie->val[p] < 0) /* RELU (Sigmoid?) */
-      salie->val[p] = 0;
-  }
-  iftDestroyAdjRel(&A);
-  iftFree(weight);
-
-  return (salie);
-}
-
 int NumberOfTruelabels(int *truelabels, int n)
 {
   int nlabels = 0;
@@ -614,133 +215,150 @@ void poolingArray(iftMImageArray *activ_array, iftFLIMGraphArray *graph,
   }
 }
 
-iftFLIMGraph *strideModel(iftFLIMGraph *graph, iftImage *input_labels, iftImage *output_labels, 
-                          int stride)
+int element_link(int x, int y, int *rank, int *parent)
 {
-  iftBMap *visited = iftCreateBMap(graph->num_nodes);
-  iftAdjRel *A;
-
-  // reduce labels image according to stride and compute mean color
-  int num_nodes = 0;
-  iftVoxel u;
-  for (u.z = 0; u.z < input_labels->zsize; u.z = u.z + stride)
+  // If necessary, rename variables to ensure that
+  // x has rank at least as large as that of y
+  if (rank[x] < rank[y])
   {
-    for (u.y = 0; u.y < input_labels->ysize; u.y = u.y + stride)
-    {
-      for (u.x = 0; u.x < input_labels->xsize; u.x = u.x + stride)
-      {
-        int p = iftMGetVoxelIndex(input_labels, u);
-        int label = input_labels->val[p];
-        if (!iftBMapValue(visited, label - 1))
-        {
-          iftBMapSet1(visited, label - 1);
-          num_nodes++;
-        }
-      }
-    }
+    int t = x;
+    x = y;
+    y = t;
   }
 
-  int map_nodes[graph->num_nodes]; // map old to new node index
-  int new_index = 0;
-  for (int old_index = 0; old_index < graph->num_nodes; old_index++)
-  {
-    if (iftBMapValue(visited, old_index))
-    {
-      map_nodes[old_index] = new_index;
-      new_index++;
-    }
-    else map_nodes[old_index] = -1;
-  }
+  // If necessary, increment the rank of x
+  if (rank[x] == rank[y])
+    rank[x] = rank[x] + 1;
   
-  if(new_index != num_nodes)
-    iftError("Number of nodes is different from expected: %d %d", __func__, new_index, num_nodes);
+  // Make x the new root
+  parent[y] = x;
+  return x;
+}
+
+int element_find(int x, int *parent)
+{ 
+  if (parent[x] != x) 
+    parent[x] = element_find(parent[x], parent);  
+  return parent[x];
+}
+
+int union_set(int x, int y, int *parent, int *rank){
+    // Replace nodes by roots
+    x = element_find(x, parent);
+    y = element_find(y, parent);
+
+    if (x == y){
+        return -1; // x and y are already in the same set
+    }
+
+    return element_link(x, y, rank, parent);
+}
+
+iftFLIMGraph *strideModel(iftFLIMGraph *graph, int stride, int *nodes_map)
+{
+  int num_nodes_out = graph->num_nodes / stride;
+  double *distance = iftAllocDoubleArray(graph->num_nodes);
+	int closest_neigh[graph->num_nodes];
+	iftDHeap *heap = iftCreateDHeap(graph->num_nodes, distance);
   
-  iftDestroyBMap(&visited);
+  int rank[graph->num_nodes];
+  int parent[graph->num_nodes];
 
-  iftFLIMGraph *output_graph = iftCreateEmptyFLIMGraph(graph->num_feats, num_nodes);
-  iftBMap *neighbors[num_nodes];
+  // weight nodes accoding to the minimum distance to their neighbors
+	for(int i = 0; i < graph->num_nodes; i++){
+		iftFLIMGraphNode *node = &(graph->nodes[i]);
+    iftSet *adj = node->adj;
 
-  if (iftIs3DImage(input_labels))
-    A = iftSpheric(sqrtf(3.0));
-  else
-    A = iftCircular(sqrtf(2.0));
-
-  for (int i = 0; i < num_nodes; i++)
-    neighbors[i] = iftCreateBMap(num_nodes);
-
-  int q = 0;
-  for (u.z = 0; u.z < input_labels->zsize; u.z = u.z + stride)
-  {
-    for (u.y = 0; u.y < input_labels->ysize; u.y = u.y + stride)
-    {
-      for (u.x = 0; u.x < input_labels->xsize; u.x = u.x + stride)
-      {
-        int p = iftMGetVoxelIndex(input_labels, u);
-        int old_label = input_labels->val[p] - 1;
-        int new_label = map_nodes[old_label];
-        iftFLIMGraphNode *node = &(output_graph->nodes[new_label]);
-
-        output_labels->val[q] = new_label+1;
-        int feat = 0;
-        while (feat < graph->num_feats)
-        {
-          node->feats[feat] += graph->nodes[old_label].feats[feat];
-          feat++;
-        }
-
-        node->numPixels++;
-        q++;
+    double min_dist = INFINITY;
+    int cn = -1;
+    while(adj != NULL){
+      double val = 0;
+      for (int j = 0; j < graph->num_feats; j++) { // euclidean distance
+        val += (node->feats[j] - graph->nodes[adj->elem].feats[j]) * (node->feats[j] - graph->nodes[adj->elem].feats[j]);
       }
+      val = sqrt(val);
+      if(val < min_dist){
+        min_dist = val;
+        cn = adj->elem;
+      }
+      adj = adj->next;
+    }
+
+		closest_neigh[i] = cn;
+		distance[i] = min_dist;
+		iftInsertDHeap(heap, i);
+    rank[i] = 1;
+    parent[i] = i;
+    nodes_map[i] = -1;
+  }
+  iftFree(distance);
+  
+  // merge nodes until achieve the required number of nodes
+  int removed_nodes = 0;
+  while(!iftEmptyDHeap(heap) && removed_nodes != graph->num_nodes - num_nodes_out)
+  {
+    int x = iftRemoveDHeap(heap);
+    int y = closest_neigh[x];
+
+    int p = union_set(x,y,parent,rank);
+    if(p == -1) continue;
+    removed_nodes++;
+  }
+  iftDestroyDHeap(&heap);
+  
+  if(removed_nodes != graph->num_nodes - num_nodes_out){
+    iftWarning("The number of output nodes was changed from %d to %d", __func__, num_nodes_out, graph->num_nodes-removed_nodes);
+    num_nodes_out = graph->num_nodes-removed_nodes;
+  }
+
+  iftFLIMGraph *output_graph = iftCreateEmptyFLIMGraph(graph->num_feats, num_nodes_out);
+  int j = 0;
+  for(int i = 0; i < graph->num_nodes; i++)
+  {
+    int p = element_find(i, parent);
+    if(nodes_map[p] == -1){
+      nodes_map[p] = j;
+      j++;
+    }
+    int q = nodes_map[p];
+    nodes_map[i] = q;
+    
+    iftFLIMGraphNode *node = &(output_graph->nodes[q]);
+    iftFLIMGraphNode *remove_node = &(graph->nodes[i]);
+
+    // merge node features
+    for(int b = 0; b < graph->num_feats; b++){
+      node->feats[b] *= node->numPixels;
+      node->feats[b] += (remove_node->feats[b] * remove_node->numPixels);
+      node->feats[b] /= (node->numPixels + remove_node->numPixels);
+    }
+
+    // merge their number of pixels
+    node->numPixels += remove_node->numPixels;
+
+    // merge neighbors
+    iftSet *adj = remove_node->adj;
+    while(adj != NULL)
+    {
+      int adj_label = nodes_map[adj->elem];
+      if(adj->elem < i && 
+          adj_label != q && 
+          (iftUnionSetElem(&(node->adj), adj_label) == 1))
+      {
+        node->numNeighbors++;
+        iftInsertFLIMGraphNeighborNode(&(output_graph->nodes[adj_label]), q);
+      }
+      adj = adj->next;
     }
   }
-
-  q = 0;
-  for (u.z = 0; u.z < input_labels->zsize; u.z = u.z + stride)
-  {
-    for (u.y = 0; u.y < input_labels->ysize; u.y = u.y + stride)
-    {
-      for (u.x = 0; u.x < input_labels->xsize; u.x = u.x + stride)
-      {
-        int p = iftMGetVoxelIndex(input_labels, u);
-        int old_label = input_labels->val[p] - 1;
-        int new_label = map_nodes[old_label];
-        iftFLIMGraphNode *node = &(output_graph->nodes[new_label]);
-
-        iftVoxel p_voxel = iftGetVoxelCoord(output_labels, q);
-        for (int i = 1; i < A->n; i++)
-        {
-          iftVoxel q_voxel = iftGetAdjacentVoxel(A, p_voxel, i);
-          if (iftValidVoxel(output_labels, q_voxel))
-          {
-            int q_index = iftMGetVoxelIndex(output_labels, q_voxel);
-            int q_label = output_labels->val[q_index]-1;
-            if (new_label > q_label && !iftBMapValue(neighbors[new_label], q_label))
-            {
-              iftInsertFLIMGraphNeighborNode(node, q_label);
-              iftInsertFLIMGraphNeighborNode(&(output_graph->nodes[q_label]), new_label);
-              iftBMapSet1(neighbors[new_label], q_label);
-              output_graph->num_edges++;
-            }
-          }
-        }
-        q++;
-      }
-    }
-  }
-
-  // for each node, compute its mean color
-  iftFLIMGraphNode *node = output_graph->nodes;
-  for (int spx_index = 0; spx_index < num_nodes; spx_index++)
-  {
-    for (int band_index = 0; band_index < output_graph->num_feats; band_index++)
-      node->feats[band_index] /= (double)node->numPixels;
-    node++;
-    iftDestroyBMap(&neighbors[spx_index]);
-  }
-  node = NULL;
-  iftDestroyAdjRel(&A);
 
   return output_graph;
+}
+
+void remapGraphLabels(iftImage *input_labels, int *nodes_map)
+{
+  for(int i = 0; i < input_labels->n; i++)
+    input_labels->val[i] = nodes_map[input_labels->val[i]-1]+1;
 }
 
 void strideModelBatch(iftFLIMGraphArray *graph, char **basename,
@@ -751,21 +369,17 @@ void strideModelBatch(iftFLIMGraphArray *graph, char **basename,
     {
         char filename[200];
         /* stride model */
+        int nodes_map[graph->val[i - first]->num_nodes];
+        iftFLIMGraph *output_graph = strideModel(graph->val[i - first], layer.pool_stride, nodes_map);
+      
         sprintf(filename, "%s/%s.pgm", in_labels_dir, basename[i-first]);
         iftImage *input_labels = iftReadImageByExt(filename);
-
-        int new_x = ceilf(input_labels->xsize / (float)layer.pool_stride);
-        int new_y = ceilf(input_labels->ysize / (float)layer.pool_stride);
-        int new_z = iftMax(ceilf(input_labels->zsize / (float)layer.pool_stride), 1);
-
-        iftImage *output_labels = iftCreateImage(new_x, new_y, new_z);
-        iftFLIMGraph *output_graph = strideModel(graph->val[i - first], input_labels, output_labels, layer.pool_stride);
-        iftDestroyImage(&input_labels);
+        remapGraphLabels(input_labels, nodes_map);
 
         /* save output */
         sprintf(filename, "%s/%s.pgm", out_labels_dir, basename[i-first]);
-        iftWriteImageByExt(output_labels, filename);
-        iftDestroyImage(&output_labels);
+        iftWriteImageByExt(input_labels, filename);
+        iftDestroyImage(&input_labels);
 
         iftDestroyFLIMGraph(&(graph->val[i - first]));
         graph->val[i - first] = output_graph;
@@ -821,21 +435,14 @@ void decodeLayer(iftFLIMGraph *input,
     int Imax;
 
     sprintf(filename, "%s/labels%d/%s.pgm", model_dir, nLayers, basename);
+    if(!iftFileExists(filename))
+        iftError("Label file %s does not exist", "decodeLayer", filename);
+    
     iftImage *label_img = iftReadImageByExt(filename);
     iftMImage *mimg = iftFLIMGraphToMImage(input, label_img);
     iftDestroyImage(&label_img);
     
     float scale[] = {1.0, 1.0, 1.0};
-
-    if (has_stride)
-    {
-        sprintf(filename, "%s/labels0/%s.pgm", model_dir, basename);
-        iftImage *labels0 = iftReadImageByExt(filename);
-        scale[0] = (float)labels0->xsize / (float)mimg->xsize;
-        scale[1] = (float)labels0->ysize / (float)mimg->ysize;
-        scale[2] = (float)labels0->zsize / (float)mimg->zsize;
-        iftDestroyImage(&labels0);
-    }
 
     /* Estimate one salience map per object (class) */
     iftFImage **salie = NULL;
@@ -854,14 +461,15 @@ void decodeLayer(iftFLIMGraph *input,
                     weight[k] = -1;
             }
             // salie[l]  = FixedWeightDecoder(mimg,weight);
-            salie[l] = AdaptiveDecoder2(mimg, 1.5, weight);
+            //salie[l] = AdaptiveDecoder2(mimg, 1.5, weight);
+            salie[l] = HybridAdaptativeDecoder(mimg, weight);
         }
         iftFree(weight);
     }
     else
     {
         salie = (iftFImage **)calloc(1, sizeof(iftFImage *));
-        salie[0] = AdaptiveDecoder1_(mimg);
+        salie[0] = TriStateAdaptativeDecoder(mimg);
         nlabels = 1;
     }
 
@@ -910,7 +518,7 @@ int main(int argc, char *argv[])
     timer *tstart;
 
     if (argc != 7)
-        iftError("Usage: iftGFLIMExtract <P1> <P2> <P3> <P4> <P5> <P6> \n"
+        iftError("Usage: iftGFLIMGSExtract <P1> <P2> <P3> <P4> <P5> <P6> \n"
                  "[1] Images directory \n"
                  "[2] Model directory \n"
                  "[3] Architecture file \n"
@@ -960,9 +568,17 @@ int main(int argc, char *argv[])
     int max_edges = 0;
 
     if (fs_imgs->n < 1) iftError("Image list is empty", __func__);
+
+    int number_of_kernels;
+    char filename[200];
+    sprintf(filename, "%s/model/conv1-labels.txt", model_dir);
+    if(!iftFileExists(filename))
+        iftError("File %s does not exist", "main", filename);
+    FILE *fp = fopen(filename, "r");
+    fscanf(fp, "%d", &number_of_kernels);
+    fclose(fp);
     
     /* Verify if all graphs have the same dimension for batch processing */
-
     // Ensure that each thread accesses a different cache line (https://wgropp.cs.illinois.edu/courses/cs598-s15/lectures/lecture18.pdf)
     typedef struct{ int edges; int pixels; char pad[128]; } tvals;
 
@@ -1000,21 +616,12 @@ int main(int argc, char *argv[])
 
     max_edges -= (max_pixels - nsuperpixels);
     if(max_edges > nsuperpixels*(nsuperpixels-1)/2) max_edges = nsuperpixels*(nsuperpixels-1)/2;
-
-    int number_of_kernels;
-    char filename[200];
-    sprintf(filename, "%s/model/conv1-labels.txt", model_dir);
-    FILE *fp = fopen(filename, "r");
-    fscanf(fp, "%d", &number_of_kernels);
-    fclose(fp);
-
+    
     /* Select batch size for GPU/CPU processing */
-
     batchsize = batchSizeCPU(arch, nsuperpixels, ninput_channels, max_edges, number_of_kernels, nLayers);
     batchsize = iftMin(batchsize, ngraphs);
     nbatches = ngraphs / batchsize;
     nremaining_graphs = nremaining_graphs - nbatches * batchsize;
-
     for (int batch = 0; batch < nbatches; batch++)
     {
         int first = batch * batchsize, last = first + batchsize - 1;

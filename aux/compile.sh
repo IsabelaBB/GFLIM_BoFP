@@ -3,4 +3,5 @@ if [ "$#" -ne 1 ]; then
   exit 1
 fi
 
-make IFT_GPU=$1 iftCreateGFLIMGraph iftGFLIMFeatPoints iftGFLIMMergeLayerModels iftGFLIMExtract
+make IFT_GPU=$1 iftReduceLayerWeights
+#iftCreateGFLIMGraph iftGFLIMFeatPoints iftGFLIMMergeLayerModels iftGFLIMWriteActivations iftReduceSeedSet iftReduceMergedLayerWeights

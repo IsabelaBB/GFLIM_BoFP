@@ -199,7 +199,7 @@ int main(int argc, char *argv[])
     timer *tstart;
 
     if (argc != 5)
-        iftError("Usage: iftCreateLayerModel P1 P2 P3 P4 \n"
+        iftError("Usage: iftGFLIMISCreateLayerModel P1 P2 P3 P4 \n"
                  "P1: input model directory\n"
                  "P2: input network architecture (.json)\n"
                  "P3: input layer for patch definition (1, 2, 3, etc)\n"

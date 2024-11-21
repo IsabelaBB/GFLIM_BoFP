@@ -20,9 +20,15 @@ init_seeds = int(sys.argv[5])
 final_spx = int(sys.argv[6])
 
 path_to_exec = "/home/isabela/Codes/svnift/trunk/bin"
-os.makedirs(model_folder, exist_ok=True)
+if(os.path.exists(path_to_exec) == False):
+    print("Path to exec files does not exist")
+    exit()
+    
+if(os.path.exists(model_folder) == False):
+    print("Model folder does not exist")
+    exit()
 
-line = "{}/iftGFLIMExtract {} {} {} {} {} {}".format(path_to_exec, image_folder, model_folder, arch_file, nlayers, init_seeds, final_spx)
+line = "{}/iftGFLIMGSExtract {} {} {} {} {} {}".format(path_to_exec, image_folder, model_folder, arch_file, nlayers, init_seeds, final_spx)
 os.system(line)
 
 for layer in range(1,nlayers+1):

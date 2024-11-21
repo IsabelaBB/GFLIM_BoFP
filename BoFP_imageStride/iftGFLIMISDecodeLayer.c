@@ -18,211 +18,6 @@ int *LoadKernelLabels(char *filename)
   return (truelabels);
 }
 
-float *AdaptiveWeightsOtsu(iftMImage *mimg)
-{
-  float *weight = iftAllocFloatArray(mimg->m);
-  float *mean = iftAllocFloatArray(mimg->m);
-  float *maxval = iftAllocFloatArray(mimg->m);
-
-  /* Normalize activations */
-  for (int b = 0; b < mimg->m; b++)
-  {
-    maxval[b] = iftMMaximumValue(mimg, b);
-  }
-
-  // #pragma omp parallel for shared(mimg, maxval)
-  for (int p = 0; p < mimg->n; p++)
-  {
-    for (int b = 0; b < mimg->m; b++)
-    {
-      if (maxval[b] > 0.0)
-        mimg->val[p][b] /= maxval[b];
-      else
-        mimg->val[p][b] = 0.0;
-    }
-  }
-  iftFree(maxval);
-
-  /* Estimate the mean activation per channel */
-
-  for (int p = 0; p < mimg->n; p++)
-  {
-    for (int b = 0; b < mimg->m; b++)
-    {
-      mean[b] += mimg->val[p][b];
-    }
-  }
-
-  // Just so it is easier to compute the otsu
-  iftImage *means_image = iftCreateImage(mimg->m, 1, 1);
-  float max_mean = 0.0;
-  for (int b = 0; b < mimg->m; b++)
-  {
-    mean[b] /= mimg->n;
-    means_image->val[b] = mean[b] * 255;
-    if (means_image->val[b] > max_mean)
-      max_mean = means_image->val[b];
-  }
-  if (max_mean > 0.0)
-  {
-
-    /* Estimate mean and standard deviation of the above mean activations */
-
-    float mu = 0.0, stdev = 0.0;
-    for (int b = 0; b < mimg->m; b++)
-    {
-      mu += mean[b];
-    }
-    mu /= mimg->m;
-
-    int means_otsu = iftOtsu(means_image);
-
-    for (int b = 0; b < mimg->m; b++)
-    {
-      stdev += (mean[b] - mu) * (mean[b] - mu);
-    }
-    stdev = sqrtf(stdev / mimg->m) * sqrtf(stdev / mimg->m);
-
-    float low_end, high_end;
-    if (means_otsu > 0.1)
-      low_end = means_otsu - stdev;
-    else
-      low_end = means_otsu;
-    high_end = means_otsu + stdev;
-
-    /* Estimate the weight of each channel */
-
-    for (int b = 0; b < mimg->m; b++)
-    {
-      iftImage *band = iftCreateImage(mimg->xsize, mimg->ysize, mimg->zsize);
-      for (int p = 0; p < band->n; p++)
-        band->val[p] = mimg->val[p][b] * 255;
-      float fg_proportion = 0;
-      int max_band = 0.0;
-      for (int p = 0; p < band->n; p++)
-      {
-        if (band->val[p] > max_band)
-          max_band = band->val[p];
-      }
-      if (max_band > 0.0)
-      {
-        int otsu_band = iftOtsu(band);
-
-        for (int p = 0; p < band->n; p++)
-        {
-          if (band->val[p] >= otsu_band)
-            fg_proportion += 1;
-        }
-        fg_proportion /= band->n;
-        if (mean[b] >= high_end && fg_proportion > 0.2)
-        {
-          weight[b] = -1.0;
-        }
-        else if (mean[b] <= low_end && fg_proportion < 0.1)
-        {
-          weight[b] = +1.0;
-        }
-        else
-        {
-          weight[b] = 0.0;
-        }
-      }
-      else
-      {
-        weight[b] = 0.0;
-      }
-    }
-  }
-  else
-  {
-    for (int b = 0; b < mimg->m; b++)
-      weight[b] = 0.0;
-  }
-
-  iftFree(mean);
-  iftDestroyImage(&means_image);
-
-  return (weight);
-}
-
-float *AdaptiveWeights(iftMImage *mimg)
-{
-  float *weight = iftAllocFloatArray(mimg->m);
-  float *mean = iftAllocFloatArray(mimg->m);
-  float *maxval = iftAllocFloatArray(mimg->m);
-
-  /* Normalize activations */
-  for (int b = 0; b < mimg->m; b++)
-  {
-    maxval[b] = iftMMaximumValue(mimg, b);
-  }
-
-#pragma omp parallel for shared(mimg, maxval)
-  for (int p = 0; p < mimg->n; p++)
-  {
-    for (int b = 0; b < mimg->m; b++)
-    {
-      mimg->val[p][b] /= maxval[b];
-    }
-  }
-  iftFree(maxval);
-
-  /* Estimate the mean activation per channel */
-
-  for (int p = 0; p < mimg->n; p++)
-  {
-    for (int b = 0; b < mimg->m; b++)
-    {
-      mean[b] += mimg->val[p][b];
-    }
-  }
-
-  for (int b = 0; b < mimg->m; b++)
-  {
-    mean[b] /= mimg->n;
-  }
-
-  /* Estimate mean and standard deviation of the above mean activations */
-
-  float mu = 0.0, stdev = 0.0;
-  for (int b = 0; b < mimg->m; b++)
-  {
-    mu += mean[b];
-  }
-  mu /= mimg->m;
-
-  for (int b = 0; b < mimg->m; b++)
-  {
-    stdev += powf(mean[b] - mu, 2);
-  }
-  stdev = sqrtf(stdev / mimg->m) * sqrtf(stdev / mimg->m);
-
-  /* Estimate the weight of each channel */
-
-  for (int b = 0; b < mimg->m; b++)
-  {
-    if (mean[b] <= mu - stdev)
-    {
-      weight[b] = +1.0;
-    }
-    else
-    {
-      if (mean[b] >= mu + stdev)
-      {
-        weight[b] = -1.0;
-      }
-      else
-      {
-        weight[b] = 0.0;
-      }
-    }
-  }
-
-  iftFree(mean);
-
-  return (weight);
-}
-
 iftFImage *FixedWeightDecoder(iftMImage *mimg, float *weight)
 {
   iftFImage *salie = iftCreateFImage(mimg->xsize, mimg->ysize, mimg->zsize);
@@ -239,28 +34,6 @@ iftFImage *FixedWeightDecoder(iftMImage *mimg, float *weight)
     if (salie->val[p] < 0)
       salie->val[p] = 0; /* ReLU (Sigmoid?) */
   }
-  return (salie);
-}
-
-iftFImage *AdaptiveDecoder1(iftMImage *mimg)
-{
-  iftFImage *salie = iftCreateFImage(mimg->xsize, mimg->ysize, mimg->zsize);
-  float *weight = AdaptiveWeightsOtsu(mimg);
-
-  /* decode layer */
-  // #pragma omp parallel for shared(salie, mimg, weight)
-  for (int p = 0; p < mimg->n; p++)
-  {
-    for (int b = 0; b < mimg->m; b++)
-    {
-      salie->val[p] += mimg->val[p][b] * weight[b];
-    }
-    if (salie->val[p] < 0)
-      salie->val[p] = 0; /* ReLU (Sigmoid?) */
-  }
-
-  iftFree(weight);
-
   return (salie);
 }
 
@@ -428,11 +201,9 @@ int NumberOfTruelabels(int *truelabels, int n)
 
 int main(int argc, char *argv[])
 {
-  /* Example: iftDecodeLayer 1 arch.json flim_models salie [masks] */
-
   if ((argc != 4) && (argc != 5))
   {
-    iftError("Usage: iftDecodeLayer <P1> <P2> <P3> <P4> \n"
+    iftError("Usage: iftGFLIMISDecodeLayer <P1> <P2> <P3> <P4> \n"
              "[1] model directory \n"
              "[2] layer number (1, 2,..) \n"
              "[3] architecture of the network\n"
@@ -546,17 +317,20 @@ int main(int argc, char *argv[])
             weight[k] = -1;
         }
         // salie[l]  = FixedWeightDecoder(mimg,weight);
-        salie[l] = AdaptiveDecoder2(mimg, 1.5, weight);
+        //salie[l] = AdaptiveDecoder2(mimg, 1.5, weight);
+        salie[l] = HybridAdaptativeDecoder(mimg, weight);
       }
       iftFree(weight);
     }
     else
     {
       salie = (iftFImage **)calloc(1, sizeof(iftFImage *));
-      salie[0] = AdaptiveDecoder1(mimg);
+      salie[0] = TriStateAdaptativeDecoder(mimg);
       nlabels = 1;
     }
 
+    iftFree(truelabels);
+    
     for (int l = 0; l < nlabels; l++)
     {
       /* Interpolate and normalize the salience maps */

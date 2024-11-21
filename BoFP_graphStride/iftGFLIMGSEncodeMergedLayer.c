@@ -13,8 +13,7 @@ void LoadMergedModel(char *basepath, iftMatrix **K, float **bias)
   fp = fopen(filename, "r");
   fscanf(fp, "%d", &nkernels);
   *bias = iftAllocFloatArray(nkernels);
-  for (int k = 0; k < nkernels; k++) 
-  {
+  for (int k = 0; k < nkernels; k++) {
     fscanf(fp, "%f ", &((*bias)[k]));
   }  
   fclose(fp);
@@ -134,7 +133,11 @@ iftFLIMGraph *strideModel(iftFLIMGraph *graph, int stride, int *nodes_map)
     double min_dist = INFINITY;
     int cn = -1;
     while(adj != NULL){
-      double val = iftEuclideanDistance(node->feats, graph->nodes[adj->elem].feats, graph->num_feats);
+      double val = 0;
+      for (int j = 0; j < graph->num_feats; j++) { // euclidean distance
+        val += (node->feats[j] - graph->nodes[adj->elem].feats[j]) * (node->feats[j] - graph->nodes[adj->elem].feats[j]);
+      }
+      val = sqrt(val);
       if(val < min_dist){
         min_dist = val;
         cn = adj->elem;
@@ -145,27 +148,23 @@ iftFLIMGraph *strideModel(iftFLIMGraph *graph, int stride, int *nodes_map)
 		closest_neigh[i] = cn;
 		distance[i] = min_dist;
 		iftInsertDHeap(heap, i);
-
     rank[i] = 1;
     parent[i] = i;
     nodes_map[i] = -1;
   }
-
   iftFree(distance);
   
   // merge nodes until achieve the required number of nodes
   int removed_nodes = 0;
-  while(iftEmptyDHeap(heap) && removed_nodes != graph->num_nodes - num_nodes_out)
+  while(!iftEmptyDHeap(heap) && removed_nodes != graph->num_nodes - num_nodes_out)
   {
     int x = iftRemoveDHeap(heap);
     int y = closest_neigh[x];
 
     int p = union_set(x,y,parent,rank);
     if(p == -1) continue;
-
     removed_nodes++;
   }
-
   iftDestroyDHeap(&heap);
   
   if(removed_nodes != graph->num_nodes - num_nodes_out){
@@ -183,6 +182,7 @@ iftFLIMGraph *strideModel(iftFLIMGraph *graph, int stride, int *nodes_map)
       j++;
     }
     int q = nodes_map[p];
+    nodes_map[i] = q;
     
     iftFLIMGraphNode *node = &(output_graph->nodes[q]);
     iftFLIMGraphNode *remove_node = &(graph->nodes[i]);
@@ -201,13 +201,13 @@ iftFLIMGraph *strideModel(iftFLIMGraph *graph, int stride, int *nodes_map)
     iftSet *adj = remove_node->adj;
     while(adj != NULL)
     {
+      int adj_label = nodes_map[adj->elem];
       if(adj->elem < i && 
-          nodes_map[adj->elem] != q && 
-          iftUnionSetElem(node->adj, nodes_map[adj->elem]) == 1)
+          adj_label != q && 
+          (iftUnionSetElem(&(node->adj), adj_label) == 1))
       {
         node->numNeighbors++;
-        iftInsertFLIMGraphNeighborNode(&(output_graph->nodes[nodes_map[adj->elem]]), q);
-        output_graph->nodes[nodes_map[adj->elem]].numNeighbors++;
+        iftInsertFLIMGraphNeighborNode(&(output_graph->nodes[adj_label]), q);
       }
       adj = adj->next;
     }
@@ -222,12 +222,207 @@ void remapGraphLabels(iftImage *input_labels, int *nodes_map)
     input_labels->val[i] = nodes_map[input_labels->val[i]-1]+1;
 }
 
+int test(int argc, char *argv[])
+{
+  iftImage *input_labels = iftCreateImage(5, 5, 1);
+  int labels [] = {2, 1, 1, 6, 6, 
+                  2, 1, 1, 6, 6,
+                  2, 7, 3, 3, 3,
+                  7, 7, 5, 5, 4, 
+                  7, 7, 5, 5, 4};
+  for(int i = 0; i < input_labels->n; i++)
+    input_labels->val[i] = labels[i];
+
+  iftImage *img = iftCreateImage(5, 5, 1);
+  int color [] = {4, 7, 7, 10, 10,
+                  4, 7, 7, 10, 10,
+                  4, 0, 15, 15, 15,
+                  0, 0, 2, 2, 14, 
+                  0, 0, 2, 2, 14};
+  for(int i = 0; i < img->n; i++)
+    img->val[i] = color[i];
+  
+  iftMImage *mimg = iftImageToMImage(img, GRAY_CSPACE);
+  iftDestroyImage(&img);
+  iftAdjRel *A = iftCircular(sqrtf(2.0));
+  iftFLIMGraph *graph = iftSuperpixelImageToFLIMGraph(7, A, mimg, input_labels);
+
+  // print graph
+  /*printf("Input graph\n");
+  printf("Num nodes: %ld\n", graph->num_nodes);
+  printf("Num feats: %ld\n", graph->num_feats);
+  for(int i = 0; i < graph->num_nodes; i++){
+    iftFLIMGraphNode *node = &(graph->nodes[i]);
+    printf("Node %d: ", i);
+    for(int j = 0; j < graph->num_feats; j++){
+      printf("%f ", node->feats[j]);
+    }
+    printf("\n");
+    printf("Num pixels: %ld\n", node->numPixels);
+    // print adjacents
+    printf("Neighbors %ld: ", node->numNeighbors);
+    iftSet *adj = node->adj;
+    while(adj != NULL){
+      printf("%d ", adj->elem);
+      adj = adj->next;
+    }
+    printf("\n");
+  }
+  printf("\n");*/
+
+  printf("Testing input graph... ");
+  if(graph->num_nodes != 7)
+    iftError("Invalid number of nodes: %d", "main", graph->num_nodes);
+  if(graph->num_feats != 1)
+    iftError("Invalid number of features: %d", "main", graph->num_feats);
+  
+  double feats[] = {7.0, 4.0, 15.0, 14.0, 2.0, 10.0, 0.0};
+  int num_pixels[] = {4, 3, 3, 2, 4, 4, 5};
+  int num_neighbors[] = {4, 2, 5, 2, 3, 2, 4};
+  int neighbors[][5] = {{2,6,5,1,0}, {6,0,0,0,0}, {3,4,0,6,5}, {2,4,0,0,0}, {3,2,6,0,0}, {2,0,0,0,0}, {4,0,2,1,0}};
+  for(int i = 0; i < graph->num_nodes; i++){
+    iftFLIMGraphNode *node = &(graph->nodes[i]);
+    if(node->numPixels != num_pixels[i])
+      iftError("Invalid number of pixels %ld in node %d", "main", node->numPixels, i);
+    if(node->feats[0] != feats[i])
+      iftError("Invalid feature value %f in node %d", "main", node->feats[0], i);
+    if(node->numNeighbors != num_neighbors[i])
+      iftError("Invalid number of neighbors %ld in node %d", "main", node->numNeighbors, i);
+    iftSet *adj = node->adj;
+    int ok = 0;
+    while(adj != NULL){
+      int j = 0;
+      for(int j = 0; j < node->numNeighbors; j++){
+        if(j < num_neighbors[i] && neighbors[i][j] == adj->elem){
+          j = node->numNeighbors;
+          ok++;
+          break;
+        }
+      }
+      if(j == node->numNeighbors-1)
+          iftError("Invalid neighbor %d in node %d", "main", adj->elem, i);
+      adj = adj->next;
+    }
+    if(ok != num_neighbors[i])
+      iftError("Invalid neighbors in node %d", "main", i);
+  }
+  printf("OK\n");
+
+  int nodes_map[graph->num_nodes];
+  iftFLIMGraph *output_graph = strideModel(graph, 2, nodes_map);
+
+  printf("Testing nodes map... ");
+  int correct_nodes_map[] = {0, 0, 1, 1, 2, 0, 2};
+  for(int i = 0; i < graph->num_nodes; i++){
+    if(nodes_map[i] != correct_nodes_map[i])
+      iftError("Invalid node map %d in node %d", "main", nodes_map[i], i);
+  }
+  printf("OK\n");
+
+  printf("Testing output graph... ");
+  if(output_graph->num_nodes != 3)
+    iftError("Invalid number of nodes: %d", "main", output_graph->num_nodes);
+  if(output_graph->num_feats != 1)
+    iftError("Invalid number of features: %d", "main", output_graph->num_feats);
+  
+  double feats2[] = {80.0/11.0, 14.6, 8.0/9.0};
+  int num_pixels2[] = {11, 5, 9};
+  int num_neighbors2[] = {2, 2, 2};
+  int neighbors2[][2] = {{2,1}, {2,0}, {0,1}};
+  for(int i = 0; i < output_graph->num_nodes; i++){
+    iftFLIMGraphNode *node = &(output_graph->nodes[i]);
+    if(node->numPixels != num_pixels2[i])
+      iftError("Invalid number of pixels %ld in node %d", "main", node->numPixels, i);
+    if(node->feats[0] != feats2[i])
+      iftError("Invalid feature value %f in node %d", "main", node->feats[0], i);
+    if(node->numNeighbors != num_neighbors2[i])
+      iftError("Invalid number of neighbors %ld in node %d", "main", node->numNeighbors, i);
+    iftSet *adj = node->adj;
+    int ok = 0;
+    while(adj != NULL){
+      int j = 0;
+      for(int j = 0; j < node->numNeighbors; j++){
+        if(j < num_neighbors2[i] && neighbors2[i][j] == adj->elem){
+          j = node->numNeighbors;
+          ok++;
+          break;
+        }
+      }
+      if(j == node->numNeighbors-1)
+          iftError("Invalid neighbor %d in node %d", "main", adj->elem, i);
+      adj = adj->next;
+    }
+    if(ok != num_neighbors2[i])
+      iftError("Invalid neighbors in node %d", "main", i);
+  }
+  printf("OK\n");
+
+  // print labels_map
+  /*printf("Labels map\n");
+  for(int i = 0; i < graph->num_nodes; i++){
+    printf("%d -> %d\n", i, nodes_map[i]);
+  }
+  printf("\n");*/
+
+  // print output graph
+  /*printf("Output graph\n");
+  for(int i = 0; i < output_graph->num_nodes; i++){
+    iftFLIMGraphNode *node = &(output_graph->nodes[i]);
+    printf("Node %d: ", i);
+    for(int j = 0; j < output_graph->num_feats; j++)
+      printf("%f ", node->feats[j]);
+    printf("\n");
+    printf("Num pixels: %ld\n", node->numPixels);
+    // print adjacents
+    printf("Neighbors %ld: ", node->numNeighbors);
+    iftSet *adj = node->adj;
+    while(adj != NULL){
+      printf("%d ", adj->elem);
+      adj = adj->next;
+    }
+    printf("\n");
+  }*/
+
+  iftDestroyFLIMGraph(&graph);
+  remapGraphLabels(input_labels, nodes_map);
+
+  int correct_out_labels[] = {1,1,1,1,1,
+                            1,1,1,1,1,
+                            1,3,2,2,2,
+                            3,3,3,3,2,
+                            3,3,3,3,2};
+
+  printf("Testing output labels... ");
+  if(input_labels->n != 25)
+    iftError("Invalid number of labels: %d", "main", input_labels->n);
+  for(int i = 0; i < input_labels->n; i++){
+    if(input_labels->val[i] != correct_out_labels[i])
+      iftError("Invalid label %d in position %d", "main", input_labels->val[i], i);
+  }
+  printf("OK\n");
+
+  // print labels
+  /*printf("Labels\n");
+  for(int i = 0; i < input_labels->n; i++)
+    printf("%d ", input_labels->val[i]);
+  printf("\n");*/
+
+  iftDestroyImage(&input_labels);
+  iftDestroyMImage(&mimg);
+  iftDestroyAdjRel(&A);
+  iftDestroyFLIMGraph(&output_graph);
+
+  printf("Test passed\n");
+
+  return 0;
+}
+
 int main(int argc, char *argv[])
 {
   timer *tstart;
 
   if (argc != 4)
-    iftError("Usage: iftEncodeMergedLayer <P1> <P2> <P3> \n"
+    iftError("Usage: iftGFLIMGSEncodeMergedLayer <P1> <P2> <P3> \n"
              "[1] model directory \n"
              "[2] architecture of the network (.json) \n"
              "[3] layer number (1, 2, 3) \n",
@@ -276,14 +471,10 @@ int main(int argc, char *argv[])
 
   for (int i = 0; i < fs->n; i++)
   {
-    char *basename;
-    basename = iftFilename(fs->files[i]->path, ".json");
+    char *basename = iftFilename(fs->files[i]->path, ".json");
 
-    sprintf(filename, "%s/%s.json", input_dir, basename);
-    iftFLIMGraph *graph = iftReadFLIMGraph(filename);
-
+    iftFLIMGraph *graph = iftReadFLIMGraph(fs->files[i]->path);
     iftMImage *activ = convLayer(graph, Kmerged, kernel_size);
-
     iftMImage *activ_relu = iftMReLU(activ, bias_merged, arch->layer[layer - 1].relu);
     if (activ_relu != activ)
       iftDestroyMImage(&activ);
@@ -298,7 +489,6 @@ int main(int argc, char *argv[])
     int nodes_map[pooling_graph->num_nodes];
     iftFLIMGraph *output_graph = strideModel(pooling_graph, arch->layer[layer - 1].pool_stride, nodes_map);
     iftDestroyFLIMGraph(&pooling_graph);
-
     sprintf(filename, "%s/%s.pgm", labels_dir, basename);
     iftImage *input_labels = iftReadImageByExt(filename);
     remapGraphLabels(input_labels, nodes_map);

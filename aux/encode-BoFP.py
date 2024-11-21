@@ -22,6 +22,10 @@ init_seeds = int(sys.argv[6])
 final_spx = int(sys.argv[7])
 
 path_to_exec = "/home/isabela/Codes/svnift/trunk/bin"
+if(os.path.exists(path_to_exec) == False):
+    print("Path to exec files does not exist")
+    exit()
+    
 os.makedirs(model_folder, exist_ok=True)
 
 line = "{}/iftCreateGFLIMGraph {} {} {} {}".format(path_to_exec, image_folder, init_seeds, final_spx, model_folder)
@@ -33,7 +37,7 @@ os.system(line)
 for layer in range(1,nlayers+1):
     print("Layer {}".format(layer))
     print("\t Creating layer model ")
-    line = "{}/iftGFLIMGSCreateLayerModel {} {} {} {}".format(path_to_exec, model_folder, arch_file, layer, markers_folder)
+    line = "{}/iftGFLIMCreateLayerModel {} {} {} {}".format(path_to_exec, model_folder, arch_file, layer, markers_folder)
     os.system(line)
     
     print("\t Merging layer models ")
@@ -41,7 +45,7 @@ for layer in range(1,nlayers+1):
     os.system(line)
 
     print("\t Encoding merged layer ")
-    line = "{}/iftGFLIMGSEncodeMergedLayer {} {} {}".format(path_to_exec, model_folder, arch_file, layer)
+    line = "{}/iftGFLIMEncodeMergedLayer {} {} {}".format(path_to_exec, model_folder, arch_file, layer)
     os.system(line)
 
 

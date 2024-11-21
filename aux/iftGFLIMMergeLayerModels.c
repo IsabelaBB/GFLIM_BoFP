@@ -68,7 +68,7 @@ int main(int argc, char *argv[])
     timer *tstart;
 
     if (argc != 3)
-        iftError("Usage: iftMergeLayerModels <P1> <P2> \n"
+        iftError("Usage: iftGFLIMMergeLayerModels <P1> <P2> \n"
                  "[1] model directory \n"
                  "[2] layer number (1, 2, 3) \n",
                  "main");

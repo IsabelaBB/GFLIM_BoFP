@@ -27,7 +27,6 @@ iftDataSet *ExtractGraphNodeFeatures(iftFLIMGraph *graph, /*iftMImage *mimg, */
     int nsamples = iftLabeledSetSize(S);
     int num_adj = layer.kernel_size[0] * layer.kernel_size[1];
     iftDataSet *Z = iftCreateDataSet(nsamples, num_adj * graph->num_feats);
-
     iftLabeledSet *Saux = S;
     int incr = 0;
     while (Saux != NULL)
@@ -49,10 +48,8 @@ iftDataSet *ExtractGraphNodeFeatures(iftFLIMGraph *graph, /*iftMImage *mimg, */
         Z->sample[s].truelabel = Saux->label + incr; /* vary from 1 to c */
         if (Z->sample[s].truelabel > Z->nclasses)
             Z->nclasses = Z->sample[s].truelabel;
-
         iftIntArray *neighbors = iftGetKNeighborsFLIMGraph(Saux->elem, graph,
                                                            num_adj, layer.dilation_rate[0] * layer.dilation_rate[1], true);
-
         int i = 0;
         while (i < neighbors->n)
         {
@@ -70,7 +67,6 @@ iftDataSet *ExtractGraphNodeFeatures(iftFLIMGraph *graph, /*iftMImage *mimg, */
                 Z->sample[s].feat[b + i * graph->num_feats] = 0;
             i++;
         }
-
         s++;
         Saux = Saux->next;
     }
@@ -112,10 +108,15 @@ void SaveKernelLabels(char *basepath, int *truelabel, int number_of_kernels)
 iftLabeledSet *imageMarkersToGraphMarkers(char *labels_file, char *seeds_file)
 {
     iftImage *label_img = iftReadImageByExt(labels_file);
-    iftLabeledSet *S = iftReadSeeds(label_img, seeds_file);
+    iftLabeledSet *S = NULL;
     iftLabeledSet *graph_seeds = NULL;
-
     float scale[3];
+
+    if (!iftIs3DImage(label_img))
+        S = iftReadLabeledSet(seeds_file, 2);
+    else
+        S = iftReadLabeledSet(seeds_file, 3);
+
     FILE *fp = fopen(seeds_file, "r");
     int nseeds;
     int w, h, d;
@@ -123,20 +124,16 @@ iftLabeledSet *imageMarkersToGraphMarkers(char *labels_file, char *seeds_file)
     { /* 2D Image */
         if (fscanf(fp, "%d %d %d", &nseeds, &w, &h) != 3)
             iftError("Reading error", "iftReadSeeds");
-
-        scale[0] = (float)label_img->xsize / (float)w;
-        scale[1] = (float)label_img->ysize / (float)h;
-        scale[2] = 1;
+        d = 1;
     }
     else
     {
         if (fscanf(fp, "%d %d %d %d", &nseeds, &w, &h, &d) != 4)
             iftError("Reading error", "iftReadSeeds");
-
-        scale[0] = (float)label_img->xsize / (float)w;
-        scale[1] = (float)label_img->ysize / (float)h;
-        scale[2] = (float)label_img->zsize / (float)d;
     }
+    scale[0] = (float)w / (float)label_img->xsize;
+    scale[1] = (float)h / (float)label_img->ysize;
+    scale[2] = (float)d / (float)label_img->zsize;
 
     fclose(fp);
 
@@ -152,8 +149,8 @@ iftLabeledSet *imageMarkersToGraphMarkers(char *labels_file, char *seeds_file)
     {
         int l = tmp->label;
         int p = tmp->elem;
-
-        if (iftIs3DMImage(label_img))
+        
+        if (iftIs3DImage(label_img))
         {
             u = GetVoxelCoord((int)(label_img->xsize * scale[0]),
                               (int)(label_img->ysize * scale[1]),
@@ -167,6 +164,7 @@ iftLabeledSet *imageMarkersToGraphMarkers(char *labels_file, char *seeds_file)
         u.x = u.x / scale[0];
         u.y = u.y / scale[1];
         u.z = u.z / scale[2];
+
         p = iftGetVoxelIndex(label_img, u);
 
         // define whether the superpixel is foreground or background
@@ -174,7 +172,7 @@ iftLabeledSet *imageMarkersToGraphMarkers(char *labels_file, char *seeds_file)
             foreground_count[label_img->val[p] - 1]++;
         else
             background_count[label_img->val[p] - 1]++;
-
+        
         tmp = tmp->next;
     }
 
@@ -191,7 +189,6 @@ iftLabeledSet *imageMarkersToGraphMarkers(char *labels_file, char *seeds_file)
                 iftUnionLabeledSetElemMarkerAndHandicap(&graph_seeds, p, 0, 0, 0);
         }
     }
-
     free(foreground_count);
     free(background_count);
     return graph_seeds;
@@ -202,7 +199,7 @@ int main(int argc, char *argv[])
     timer *tstart;
 
     if (argc != 5)
-        iftError("Usage: iftCreateLayerModel P1 P2 P3 P4 \n"
+        iftError("Usage: iftGFLIMGSCreateLayerModel P1 P2 P3 P4 \n"
                  "P1: input model directory\n"
                  "P2: input network architecture (.json)\n"
                  "P3: input layer for patch definition (1, 2, 3, etc)\n"
@@ -219,6 +216,9 @@ int main(int argc, char *argv[])
 
     if (layer < 1)
         iftError("Invalid layer number: %d", "main", layer);
+    if(layer > arch->nlayers)
+        iftError("Layer number %d is greater than the number of layers in the network (%d)", "main", layer, arch->nlayers);
+
     if (!iftDirExists(img_markers_dir))
         iftError("Image markers directory does not exist: %s", "main", img_markers_dir);
 
@@ -240,23 +240,23 @@ int main(int argc, char *argv[])
 
     /* Extract patches from feature points of each image, compute
        filters, biases, truelabel of the filters. */
-
     for (int i = 0; i < fs->n; i++)
     {
         char *basename = iftFilename(fs->files[i]->path, "-seeds.txt");
-
-        sprintf(filename, "%s/%s%s", labels_dir, basename, ".pgm");
-        iftLabeledSet *S = imageMarkersToGraphMarkers(filename, fs->files[i]->path);
-
         sprintf(filename, "%s/%s%s", graph_dir, basename, ".json");
+        if(!iftFileExists(filename)) iftError("Graph file %s does not exist", "main", filename);
         iftFLIMGraph *graph = iftReadFLIMGraph(filename);
-
+        sprintf(filename, "%s/%s%s", labels_dir, basename, ".pgm");
+        if(!iftFileExists(filename))
+            iftError("Labels file %s does not exist", __func__, filename);
+        iftLabeledSet *S = imageMarkersToGraphMarkers(filename, fs->files[i]->path);
+        
         /* Extract patch dataset */
         iftDataSet *Z = ExtractGraphNodeFeatures(graph, S, arch->layer[layer - 1]);
         iftNormalizeDataSetByZScoreInPlace(Z, NULL, arch->stdev_factor);
+        
         iftMatrix *kernels = iftCreateMatrix(Z->nsamples, Z->nfeats);
         int *truelabel = iftAllocIntArray(Z->nsamples);
-
         /* compute filters and their truelabels */
         for (int s = 0, col = 0; s < Z->nsamples; s++)
         {
@@ -268,7 +268,7 @@ int main(int argc, char *argv[])
             }
             col++;
         }
-
+        
         /* compute biases and update filters */
         float *bias = NULL;
         bias = iftAllocFloatArray(kernels->ncols);
@@ -288,7 +288,7 @@ int main(int argc, char *argv[])
         sprintf(filename, "%s/model/%s-conv%d", model_dir, basename, layer);
         SaveBias(filename, bias, kernels->ncols);
         SaveKernelLabels(filename, truelabel, kernels->ncols);
-
+        
         iftFree(bias);
         iftFree(truelabel);
         iftDestroyMatrix(&kernels);

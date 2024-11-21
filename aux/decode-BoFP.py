@@ -14,10 +14,13 @@ nlayers = int(sys.argv[2])
 model_folder = sys.argv[3]
 
 path_to_exec = "/home/isabela/Codes/svnift/trunk/bin"
+if(os.path.exists(path_to_exec) == False):
+    print("Path to exec files does not exist")
+    exit()
 
 for layer in range(1,nlayers+1):
     print("\t Decoding layer ")
-    line = "{}/iftGFLIMGSDecodeLayer {} {} {}".format(path_to_exec, model_folder, layer, arch_file)
+    line = "{}/iftGFLIMDecodeLayer {} {} {}".format(path_to_exec, model_folder, layer, arch_file)
     os.system(line)
 
 for layer in range(1,nlayers+1):

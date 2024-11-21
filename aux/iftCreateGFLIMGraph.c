@@ -5,7 +5,7 @@
 void usage()
 {
     printf(" Usage: \n");
-    printf("./iftCreateGFLIMGraph <P1> <P2> <P3> <P4> \n");
+    printf("iftCreateGFLIMGraph <P1> <P2> <P3> <P4> \n");
     printf("P1: images diretory \n");
     printf("P2: number of initial seeds \n");
     printf("P3: number of superpixels \n");

@@ -80,6 +80,7 @@ if(args.kmeans):
 
 os.makedirs(args.model_dir, exist_ok=True)
 
+
 line = "{}/iftCreateGFLIMGraph {} {} {} {}".format(path_to_exec, args.img_dir, args.init_seeds, args.final_spx, args.model_dir)
 os.system(line)
 

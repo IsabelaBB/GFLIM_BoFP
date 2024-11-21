@@ -194,16 +194,66 @@ iftLabeledSet *imageMarkersToGraphMarkers(char *labels_file, char *seeds_file)
     return graph_seeds;
 }
 
+iftLabeledSet *updateSeedSet(iftLabeledSet *S, iftImage *label_img, iftImage *label_img0)
+{
+    int num_nodes = iftMaximumValue(label_img);
+    int num_nodes0 = iftMaximumValue(label_img0);
+    int *nodes_map = iftAllocIntArray(num_nodes0); // num_nodes0 is always greater than num_nodes
+    int scale[3];
+
+    scale[0] = (float)label_img0->xsize / (float)label_img->xsize;
+    scale[1] = (float)label_img0->ysize / (float)label_img->ysize;
+    scale[2] = (float)label_img0->zsize / (float)label_img->zsize;
+
+    for (int i = 0; i < num_nodes0; i++)
+        nodes_map[i] = -1;
+
+    for(int i = 0; i < label_img0->n; i++)
+    {
+        if(nodes_map[label_img0->val[i]] != -1) continue;
+        
+        iftVoxel u;
+        int p = i;
+        if (iftIs3DImage(label_img))
+        {
+            u = GetVoxelCoord((int)(label_img->xsize * scale[0]),
+                              (int)(label_img->ysize * scale[1]),
+                              (int)(label_img->zsize * scale[2]), p);
+        }
+        else
+        {
+            u = GetVoxelCoord((int)(label_img->xsize * scale[0]),
+                              (int)(label_img->ysize * scale[1]), 1, p);
+        }
+        u.x = u.x / scale[0];
+        u.y = u.y / scale[1];
+        u.z = u.z / scale[2];
+
+        p = iftGetVoxelIndex(label_img, u);
+        nodes_map[label_img0->val[i]] = label_img->val[p] - 1;
+    }
+
+    iftLabeledSet *T = NULL;
+    iftLabeledSet *tmp = S;
+    while (tmp != NULL)
+    {
+        if(nodes_map[tmp->elem] != -1)
+            iftInsertLabeledSetMarkerAndHandicap(&T, nodes_map[tmp->elem], tmp->label, tmp->marker, 0);
+        tmp = tmp->next;
+    }
+    return T;
+}
+
 int main(int argc, char *argv[])
 {
     timer *tstart;
 
-    if (argc != 5)
-        iftError("Usage: iftGFLIMISCreateLayerModel P1 P2 P3 P4 \n"
+    if (argc != 4)
+        iftError("Usage: iftGFLIMISCreateLayerModel P1 P2 P3 \n"
                  "P1: input model directory\n"
                  "P2: input network architecture (.json)\n"
-                 "P3: input layer for patch definition (1, 2, 3, etc)\n"
-                 "P4: image markers (-seeds.txt)\n",
+                 "P3: input layer for patch definition (1, 2, 3, etc)\n",
+                 //"P4: image markers (-seeds.txt)\n",
                  "main");
 
     tstart = iftTic();
@@ -211,7 +261,7 @@ int main(int argc, char *argv[])
     char *model_dir = argv[1];
     iftFLIMArch *arch = iftReadFLIMArch(argv[2]);
     int layer = atoi(argv[3]);
-    char *img_markers_dir = argv[4];
+    //char *img_markers_dir = argv[4];
     char graph_dir[200], labels_dir[200];
 
     if (layer < 1)
@@ -219,12 +269,14 @@ int main(int argc, char *argv[])
     if(layer > arch->nlayers)
         iftError("Layer number %d is greater than the number of layers in the network (%d)", "main", layer, arch->nlayers);
 
-    if (!iftDirExists(img_markers_dir))
-        iftError("Image markers directory does not exist: %s", "main", img_markers_dir);
+    char markers_dir [200];
+    sprintf(markers_dir, "%s/markers", model_dir);
+    if (!iftDirExists(markers_dir))
+        iftError("Image markers directory does not exist: %s", "main", markers_dir);
 
-    iftFileSet *fs = iftLoadFileSetFromDirBySuffix(img_markers_dir, "-seeds.txt", 1);
+    iftFileSet *fs = iftLoadFileSetFromDirBySuffix(markers_dir, "-seeds_graph.txt", 1);
     if (fs->n < 1)
-        iftError("Image markers directory is empty: %s", "main", img_markers_dir);
+        iftError("Image markers directory is empty: %s", "main", markers_dir);
 
     sprintf(graph_dir, "%s/layer%d", model_dir, layer - 1);
     if (!iftDirExists(graph_dir))
@@ -242,14 +294,32 @@ int main(int argc, char *argv[])
        filters, biases, truelabel of the filters. */
     for (int i = 0; i < fs->n; i++)
     {
-        char *basename = iftFilename(fs->files[i]->path, "-seeds.txt");
+        char *basename = iftFilename(fs->files[i]->path, "-seeds_graph.txt");
+
         sprintf(filename, "%s/%s%s", graph_dir, basename, ".json");
         if(!iftFileExists(filename)) iftError("Graph file %s does not exist", "main", filename);
         iftFLIMGraph *graph = iftReadFLIMGraph(filename);
-        sprintf(filename, "%s/%s%s", labels_dir, basename, ".pgm");
-        if(!iftFileExists(filename))
-            iftError("Labels file %s does not exist", __func__, filename);
-        iftLabeledSet *S = imageMarkersToGraphMarkers(filename, fs->files[i]->path);
+        
+        //sprintf(filename, "%s/%s%s", labels_dir, basename, ".pgm");
+        //if(!iftFileExists(filename)) iftError("Labels file %s does not exist", __func__, filename);
+        //iftLabeledSet *S = imageMarkersToGraphMarkers(filename, fs->files[i]->path);
+
+        sprintf(filename, "%s/labels0/%s%s", model_dir, basename, ".pgm");
+        if(!iftFileExists(filename)) iftError("Labels file %s does not exist", __func__, filename);
+        iftImage *label_img0 = iftReadImageByExt(filename);
+
+        iftLabeledSet *S = iftReadSeedsGraph(fs->files[i]->path);
+        if(graph->num_nodes != iftMaximumValue(label_img0))
+        {
+            sprintf(filename, "%s/%s%s", labels_dir, basename, ".pgm");
+            if(!iftFileExists(filename)) iftError("Labels file %s does not exist", __func__, filename);
+            iftImage *label_img = iftReadImageByExt(filename);
+            iftLabeledSet *T = updateSeedSet(S, label_img, label_img0);
+            iftDestroyImage(&label_img);
+            iftDestroyLabeledSet(&S);
+            S = T;
+        } 
+        iftDestroyImage(&label_img0);
         
         /* Extract patch dataset */
         iftDataSet *Z = ExtractGraphNodeFeatures(graph, S, arch->layer[layer - 1]);

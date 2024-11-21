@@ -85,11 +85,8 @@ os.system(line)
 
 if(args.kmeans):
     line = "{}/iftReduceSeedSet {} {} {} {} {}".format(path_to_exec, args.model_dir, args.markers_dir, kernel_size, nfeat_background, nfeat_foreground)
-    os.system(line)
-    args.markers_dir = "{}/img_markers".format(args.model_dir) # Update markers folder when reducing seed set
-    os.rename("{}/markers".format(args.model_dir), args.markers_dir)
-
-line = "{}/iftGFLIMFeatPoints {} {}".format(path_to_exec, args.markers_dir, args.model_dir)
+else:
+    line = "{}/iftGFLIMFeatPoints {} {}".format(path_to_exec, args.markers_dir, args.model_dir)
 os.system(line)
 
 for layer in range(1,args.nlayers+1):

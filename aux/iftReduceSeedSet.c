@@ -341,14 +341,16 @@ int main(int argc, char *argv[]) {
         // outputs a set of seeds in the graph space
         iftLabeledSet *T = SelectClusterCenters(graph, graph_seeds, kernel_size, nfpts_per_bkg_marker, nfpts_per_obj_marker);
         iftDestroyLabeledSet(&graph_seeds);
-        
+        sprintf(filename, "%s/%s-seeds_graph.txt", out_dir, basename);
+        iftWriteSeedsGraph(T, filename);
+
         // Convert the seeds in T back to the image space. Therefore, outputs a subset of S
-        iftLabeledSet *final_seeds = reduceImageSeeds(S, T, label_img, graph->num_nodes);
-        sprintf(filename, "%s/%s-seeds.txt", out_dir, basename);
-        iftWriteLabeledSet(final_seeds, label_img->xsize, label_img->ysize, label_img->zsize, filename);
+        //iftLabeledSet *final_seeds = reduceImageSeeds(S, T, label_img, graph->num_nodes);
+        //sprintf(filename, "%s/%s-seeds.txt", out_dir, basename);
+        //iftWriteLabeledSet(final_seeds, label_img->xsize, label_img->ysize, label_img->zsize, filename);
         
         iftFree(basename);
-        iftDestroyLabeledSet(&final_seeds);
+        //iftDestroyLabeledSet(&final_seeds);
         iftDestroyLabeledSet(&S);
         iftDestroyLabeledSet(&T);
         iftDestroyImage(&label_img);

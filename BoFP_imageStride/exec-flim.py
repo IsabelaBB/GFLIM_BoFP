@@ -85,14 +85,14 @@ os.system(line)
 
 if(args.kmeans):
     line = "{}/iftReduceSeedSet {} {} {} {} {}".format(path_to_exec, args.model_dir, args.markers_dir, kernel_size, nfeat_background, nfeat_foreground)
-    os.system(line)
-    args.markers_dir = "{}/img_markers".format(args.model_dir) # Update markers folder when reducing seed set
-    os.rename("{}/markers".format(args.model_dir), args.markers_dir)
+else:
+    line = "{}/iftGFLIMFeatPoints {} {}".format(path_to_exec, args.markers_dir, args.model_dir)
+os.system(line)
 
 for layer in range(1,args.nlayers+1):
     print("Layer {}".format(layer))
     print("\t Creating layer model ")
-    line = "{}/iftGFLIMISCreateLayerModel {} {} {} {}".format(path_to_exec, args.model_dir, args.arch_file, layer, args.markers_dir)
+    line = "{}/iftGFLIMISCreateLayerModel {} {} {} {}".format(path_to_exec, args.model_dir, args.arch_file, layer)
     os.system(line)
     
     print("\t Merging layer models ")

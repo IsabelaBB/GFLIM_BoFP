@@ -1,0 +1,118 @@
+#include "ift.h"
+
+/**
+ * \file iftGFLIMCreateLayerModel.c
+ * \brief Create the model for a given layer of the GFLIM network.
+ * \note The kernels, biases, and true labels are saved in the model directory per training image. 
+ * To merge them use iftGFLIMMergeLayerModel.
+ */
+
+int main(int argc, char *argv[])
+{
+    timer *tstart;
+
+    if (argc != 7)
+        iftError("Usage: iftGFLIMGSCreateLayerModel <P1> <P2> <P3> <P4> <P5> <P6> \n"
+                 "P1: model directory\n"
+                 "P2: network architecture (.json)\n"
+                 "P3: layer number (1, 2, 3, etc)\n"
+                 "P4: stride type (none, image-based, graph-based) \n"
+                 "P5: attention (NONE, NODE_SIZE, NEIGHB_SIMIL, NEIGHB_SIZE,...) \n"
+                 "P6: aggregation strategy (CONCAT, MEAN, WMEAN) \n",
+                 "main");
+
+    tstart = iftTic();
+
+    char *model_dir = argv[1];
+    iftFLIMArch *arch = iftReadFLIMArch(argv[2]);
+    int layer = atoi(argv[3]);
+    iftGFLIMStrideType stride_type = iftGFLIMGetStrideType(argv[4]);
+    iftFLIMGraphAttention attention_opt = iftGLIMGraphGetAttentionType(argv[5]);
+    iftGFLIMAggregationType aggregation_opt = iftGLIMGraphGetAggregationType(argv[6]);
+
+    char graph_dir[200], labels_dir[200];
+
+    if (layer < 1)
+        iftError("Invalid layer number: %d", "main", layer);
+    if(layer > arch->nlayers)
+        iftError("Layer number %d is greater than the number of layers in the network (%d)", "main", layer, arch->nlayers);
+
+    char markers_dir[200];
+    sprintf(markers_dir, "%s/markers", model_dir);
+    if (!iftDirExists(markers_dir))
+        iftError("Image markers directory does not exist: %s", "main", markers_dir);
+
+    iftFileSet *fs = iftLoadFileSetFromDirBySuffix(markers_dir, "-seeds_graph.txt", 1);
+    if (fs->n < 1)
+        iftError("Image markers directory is empty: %s", "main", markers_dir);
+
+    sprintf(graph_dir, "%s/layer%d", model_dir, layer - 1);
+    if (!iftDirExists(graph_dir))
+        iftError("Graph directory does not exist: %s", "main", graph_dir);
+
+    if(stride_type != IFT_GFLIM_NOSTRIDE)
+        sprintf(labels_dir, "%s/labels%d", model_dir, layer - 1);
+    else 
+        sprintf(labels_dir, "%s/labels0", model_dir);
+    if (!iftDirExists(labels_dir))
+        iftError("Labels directory does not exist: %s", "main", labels_dir);
+    
+    char *filename = iftAllocCharArray(512);
+    sprintf(filename, "%s/model", model_dir);
+    iftMakeDir(filename);
+
+    for (int i = 0; i < fs->n; i++)
+    {
+        iftLabeledSet *S = iftReadSeedsGraph(fs->files[i]->path);
+        if(S == NULL) continue;
+        
+        char *basename = iftFilename(fs->files[i]->path, "-seeds_graph.txt");
+
+        // read the graph
+        sprintf(filename, "%s/%s%s", graph_dir, basename, ".json");
+        if(!iftFileExists(filename)) iftError("Graph file %s does not exist", "main", filename);
+        iftFLIMGraph *graph = iftReadFLIMGraph(filename);
+        
+        // read the superpixel image for the first and current layer
+        iftImage *label_img0 = NULL, *label_img = NULL;
+        sprintf(filename, "%s/labels0/%s%s", model_dir, basename, ".pgm");
+        if(!iftFileExists(filename)) iftError("Labels file %s does not exist", __func__, filename);
+        label_img0 = iftReadImageByExt(filename);
+
+        if(stride_type != IFT_GFLIM_NOSTRIDE)
+        {
+            sprintf(filename, "%s/%s%s", labels_dir, basename, ".pgm");
+            if(!iftFileExists(filename)) iftError("Labels file %s does not exist", __func__, filename);
+            label_img = iftReadImageByExt(filename);
+        }
+
+        // create the kernels, bias and truelabels for the current graph
+        float *bias;
+        int *truelabel;
+        iftMatrix *kernels = iftGFLIMCreateLayerModel(graph, S, label_img0, label_img, arch->layer[layer - 1], arch->stdev_factor, stride_type, &bias, &truelabel, attention_opt, aggregation_opt);
+
+        /* save kernels, biases, and truelabels of the kernels */
+        sprintf(filename, "%s/model/%s-conv%d-kernels.npy", model_dir, basename, layer);
+        iftWriteMatrix(kernels, filename);
+        sprintf(filename, "%s/model/%s-conv%d", model_dir, basename, layer);
+        iftGFLIMSaveBias(filename, bias, kernels->ncols);
+        iftGFLIMSaveKernelLabels(filename, truelabel, kernels->ncols);
+        
+        iftFree(bias);
+        iftFree(truelabel);
+        iftDestroyMatrix(&kernels);
+        iftFree(basename);
+        iftDestroyFLIMGraph(&graph);
+        iftDestroyLabeledSet(&S);
+        iftDestroyImage(&label_img0);
+        if(label_img != NULL) iftDestroyImage(&label_img);
+    }
+
+    iftDestroyFileSet(&fs);
+    iftDestroyFLIMArch(&arch);
+    iftFree(filename);
+
+    printf("Done ... %s\n", iftFormattedTime(iftCompTime(tstart, iftToc())));
+
+    return (0);
+}

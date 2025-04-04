@@ -1,0 +1,18 @@
+add_executable(iftGFLIMConvertSeeds_v2 iftGFLIMConvertSeeds_v2.c)
+target_link_libraries(iftGFLIMConvertSeeds_v2 ift)
+
+add_executable(iftGFLIMCreateLayerModel iftGFLIMCreateLayerModel.c)
+target_link_libraries(iftGFLIMCreateLayerModel ift)
+
+add_executable(iftGFLIMEncodeLayer iftGFLIMEncodeLayer.c)
+target_link_libraries(iftGFLIMEncodeLayer ift)
+
+add_executable(iftGFLIMEncodeMergedLayer iftGFLIMEncodeMergedLayer.c)
+target_link_libraries(iftGFLIMEncodeMergedLayer ift)
+
+add_executable(iftGFLIMEncodeMergedLayerBatch iftGFLIMEncodeMergedLayerBatch.c)
+target_link_libraries(iftGFLIMEncodeMergedLayerBatch ift)
+
+add_executable(iftGFLIMMergeLayerModels iftGFLIMMergeLayerModels.c)
+target_link_libraries(iftGFLIMMergeLayerModels ift)
+

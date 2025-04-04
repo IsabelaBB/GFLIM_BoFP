@@ -78,10 +78,10 @@ int main(int argc, char *argv[])
     strcpy(save_arch->layer[0].pool_type, arch->layer[layer - 1].pool_type);
     save_arch->layer[0].pool_stride = arch->layer[layer - 1].pool_stride;
     iftDestroyFLIMArch(&arch);
-
+    
     char param_dir[255];
     sprintf(param_dir, "%s/model", model_dir);
-    iftFLIMGraphLearnLayer(layer_input, seeds_dir, param_dir, layer, save_arch, layer_output);
+    iftGFLIMTrainLayer(layer_input, seeds_dir, param_dir, layer, save_arch, layer_output);
 
     iftDestroyFLIMArch(&save_arch);
 

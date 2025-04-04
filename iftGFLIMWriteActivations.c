@@ -2,9 +2,8 @@
 
 /**
  * \file iftGFLIMWriteActivations.c
- * \brief Write the activations of a GFLIM network layer
+ * \brief Write the activations of a GFLIM of GFLIM-BoFP network layer
  */
-
 
 /*iftDataSet **ReadPCAMatrixAndClasses(char *model_dir, int *nclasses)
 {
@@ -48,12 +47,12 @@
     sprintf(filename, "%s-bias.txt", basepath);
     fp = fopen(filename, "r");
     if(fp == NULL) iftError("Error opening file %s", filename);
-    if(fscanf(fp, "%d", nkernels) != 1) 
+    if(fscanf(fp, "%d", nkernels) != 1)
       iftError("Error reading number of kernels from file %s", filename);
     bias = iftAllocFloatArray(*nkernels);
     for (int k = 0; k < *nkernels; k++)
     {
-      if(fscanf(fp, "%f ", &bias[k]) != 1) 
+      if(fscanf(fp, "%f ", &bias[k]) != 1)
         iftError("Error reading bias values from file %s", filename);
     }
     fclose(fp);
@@ -63,206 +62,219 @@
 
 void validateArgs(char *model_dir, int layer, char *input_dir, char *labels_dir, char *input_net_labels)
 {
-  if(layer < 1) 
-    iftError("Layer number must be greater than 0", "main");
-  
-  if(!iftDirExists(model_dir))
-    iftError("Model directory does not exist: %s", "main", model_dir);
+    if (layer < 1)
+        iftError("Layer number must be greater than 0", "main");
 
-  if (!iftDirExists(input_dir))
-    iftError("Graph directory does not exist: %s", "main", input_dir);
+    if (!iftDirExists(model_dir))
+        iftError("Model directory does not exist: %s", "main", model_dir);
 
-  if(!iftDirExists(input_net_labels))
-    iftError("Labels directory input network does not exist: %s", "main", input_net_labels);
+    if (!iftDirExists(input_dir))
+        iftError("Graph directory does not exist: %s", "main", input_dir);
 
-  if(!iftDirExists(labels_dir))
-  {
-    sprintf(labels_dir, "%s/labels0", model_dir);
-    if(!iftDirExists(labels_dir))
-      iftError("Labels directory does not exist: %s", "main", labels_dir);
-  }
+    if (!iftDirExists(input_net_labels))
+        iftError("Labels directory input network does not exist: %s", "main", input_net_labels);
+
+    if (!iftDirExists(labels_dir))
+    {
+        sprintf(labels_dir, "%s/labels0", model_dir);
+        if (!iftDirExists(labels_dir))
+            iftError("Labels directory does not exist: %s", "main", labels_dir);
+    }
 }
 
 int main(int argc, char *argv[])
 {
-  if (argc != 3)
-  {
-    iftError("Usage: iftGFLIMWriteActivations <P1> <P2> \n"
-             "[1] model directory \n"
-             "[2] layer number (1, 2,..) \n"
-             //"[3] --pca \n"
-             ,
-             "main");
-  }
+    if (argc != 3)
+    {
+        iftError("Usage: iftGFLIMWriteActivations <P1> <P2> \n"
+                 "[1] model directory \n"
+                 "[2] layer number (1, 2,..) \n"
+                 //"[3] --pca \n"
+                 ,
+                 "main");
+    }
 
-  timer *tstart = iftTic();
+    timer *tstart = iftTic();
 
-  char *model_dir = argv[1];
-  int layer = atoi(argv[2]);
-  //bool pca = false;
-  /*if (argc == 4)
-  {
-    if (strcmp(argv[3], "--pca") == 0)
-      pca = true;
-    else
-      iftError("Invalid argument: %s", "main", argv[3]);
-  }*/
+    char *model_dir = argv[1];
+    int layer = atoi(argv[2]);
+    // bool pca = false;
+    /*if (argc == 4)
+    {
+      if (strcmp(argv[3], "--pca") == 0)
+        pca = true;
+      else
+        iftError("Invalid argument: %s", "main", argv[3]);
+    }*/
 
-  char input_dir[200], labels_dir[200], input_net_labels[200], output_dir[200];
+    char input_dir[200], labels_dir[200], input_net_labels[200], output_dir[200];
 
-  sprintf(input_dir, "%s/layer%d", model_dir, layer);
-  sprintf(input_net_labels, "%s/labels0", model_dir);
-  sprintf(labels_dir, "%s/labels%d", model_dir, layer);
-  
-  validateArgs(model_dir, layer, input_dir, labels_dir, input_net_labels);
+    sprintf(input_dir, "%s/layer%d", model_dir, layer);
+    sprintf(input_net_labels, "%s/labels0", model_dir);
+    sprintf(labels_dir, "%s/labels%d", model_dir, layer);
 
-  iftFileSet *fs = iftLoadFileSetFromDirBySuffix(input_dir, ".json", true);
-  if(fs->n == 0)
-    iftError("No images found in the input directory: %s", "main", input_dir);
-  
-  char act_dir[400];
-  char filename[512];
+    validateArgs(model_dir, layer, input_dir, labels_dir, input_net_labels);
 
-  bool merged_model = false;
-  int *truelabels = NULL, nlabels = 0;
-  int nkernels = 0/*, nclasses = 0*/;
+    iftFileSet *fs = iftLoadFileSetFromDirBySuffix(input_dir, ".json", true);
+    if (fs->n == 0)
+        iftError("No images found in the input directory: %s", "main", input_dir);
 
-  //if (!pca){
+    char act_dir[400];
+    char filename[512];
+
+    bool merged_model = false;
+    int *truelabels = NULL, nlabels = 0;
+    int nkernels = 0 /*, nclasses = 0*/;
+
+    // if (!pca){
     sprintf(filename, "%s/model/conv%d-labels.txt", model_dir, layer);
-    if (iftFileExists(filename))
-    { /* load merged model */
-      truelabels = iftGFLIMLoadKernelLabels(filename, &nkernels);
-      nlabels = iftGFLIMNumberOfTruelabels(truelabels, nkernels);
-      sprintf(output_dir, "%s/activation%d", model_dir, layer);
-      merged_model = true;
+    if (iftFileExists(filename)) // merged layer in GFLIM-BoFP
+    {                            /* load merged model */
+        truelabels = iftGFLIMLoadKernelLabels(filename, &nkernels);
+        nlabels = iftGFLIMNumberOfTruelabels(truelabels, nkernels);
+        sprintf(output_dir, "%s/activation%d", model_dir, layer);
+        merged_model = true;
     }
     else
-      sprintf(output_dir, "%s/activationNoMerge%d", model_dir, layer);
-    iftMakeDir(output_dir);
-  /*} else { // not using it
-
-    iftDataSet **PCAMatrix = ReadPCAMatrixAndClasses(model_dir, &nlabels);
-    nclasses = nlabels;
-    
-    sprintf(filename, "%s/model/conv%d-1-kernels.npy", model_dir, layer);
-    if (iftFileExists(filename))
     {
-      merged_model = true;
-      for (int c = 0; c < nlabels; c++)
-        nkernels += PCAMatrix[c]->fsp.nfeats;
-
-      truelabels = (int *)iftAlloc(nkernels, sizeof(int));
-      int k = 0;
-      for (int c = 0; c < nlabels; c++)
-      {
-        for (int j = 0; j < PCAMatrix[c]->fsp.nfeats; j++, k++)
-          truelabels[k] = c + 1;
-        iftDestroyDataSet(&PCAMatrix[c]);
-      }
-      iftFree(PCAMatrix);
-      sprintf(output_dir, "%s/activation%d", model_dir, layer);
-    }
-    else
-      sprintf(output_dir, "%s/activationNoMerge%d", model_dir, layer);
-    iftMakeDir(output_dir);
-  }*/
-
-  for (int i = 0; i < fs->n; i++)
-  {
-    char *basename = iftFilename(fs->files[i]->path, ".json");
-    
-    // read the graph and the superpixels image
-    iftFLIMGraph *graph = iftReadFLIMGraph(fs->files[i]->path);
-    sprintf(filename, "%s/%s.pgm", labels_dir, basename);
-    iftImage *label_img = iftReadImageByExt(filename);
-    int nkernels = graph->num_feats;
-    
-    /* Compute the scale factor w.r.t. the input of the network */
-    float scale[3];
-    sprintf(filename, "%s/%s.pgm", input_net_labels, basename);
-    iftImage *input = iftReadImageByExt(filename);
-    scale[0] = (float)input->xsize / (float)label_img->xsize;
-    scale[1] = (float)input->ysize / (float)label_img->ysize;
-    scale[2] = (float)input->zsize / (float)label_img->zsize;
-    iftDestroyImage(&input);
-
-    /* Load labels indicating class (object) per channel */
-    if (!merged_model)
-    {
-      //if(!pca) {
-        sprintf(filename, "%s/model/%s-conv%d-labels.txt",
-                model_dir, basename, layer);
-        if (iftFileExists(filename))
-        { /* load image model */
-          truelabels = iftGFLIMLoadKernelLabels(filename, &nkernels);
-          nlabels = iftGFLIMNumberOfTruelabels(truelabels, nkernels);
+        sprintf(filename, "%s/model/conv%d-bias.txt", model_dir, layer);
+        if (iftFileExists(filename)) // is there a bias?
+            sprintf(output_dir, "%s/activationNoMerge%d", model_dir, layer); // non merged layer in GFLIM-BoFP
+        else // GFLIM
+        {
+            merged_model = true;
+            sprintf(output_dir, "%s/activation%d", model_dir, layer);
         }
-      /*}else{ // not using it
-        truelabels = iftAllocIntArray(nkernels);
+    }
+
+    iftMakeDir(output_dir);
+    /*} else { // not using it
+
+      iftDataSet **PCAMatrix = ReadPCAMatrixAndClasses(model_dir, &nlabels);
+      nclasses = nlabels;
+
+      sprintf(filename, "%s/model/conv%d-1-kernels.npy", model_dir, layer);
+      if (iftFileExists(filename))
+      {
+        merged_model = true;
+        for (int c = 0; c < nlabels; c++)
+          nkernels += PCAMatrix[c]->fsp.nfeats;
+
+        truelabels = (int *)iftAlloc(nkernels, sizeof(int));
         int k = 0;
-        int nlabels = 1;
-
-        sprintf(filename, "%s/model/%s-conv%d-%d", model_dir, basename, layer, nlabels);
-        while (nlabels <= nclasses && iftFileExists(filename))
+        for (int c = 0; c < nlabels; c++)
         {
-          int nkernelsClass = 0;
-          float *bias = iftGFLIMLoadBiasPCA(filename, &nkernelsClass);
-          for (int j = 0; j < nkernelsClass; j++, k++)
-            truelabels[k] = nlabels;
-          iftFree(bias);
-          nlabels++;
-          sprintf(filename, "%s/model/%s-conv%d-%d", model_dir, basename, layer, nlabels);
+          for (int j = 0; j < PCAMatrix[c]->fsp.nfeats; j++, k++)
+            truelabels[k] = c + 1;
+          iftDestroyDataSet(&PCAMatrix[c]);
         }
-        nlabels--;
-      }*/
-    }
+        iftFree(PCAMatrix);
+        sprintf(output_dir, "%s/activation%d", model_dir, layer);
+      }
+      else
+        sprintf(output_dir, "%s/activationNoMerge%d", model_dir, layer);
+      iftMakeDir(output_dir);
+    }*/
 
-    // convert from graph to activations (one activation per graph channel)
-    iftImage **activations = iftFlimGraphToActivations(graph, label_img);
-    iftDestroyImage(&label_img);
-    
-    if (nlabels != 0) // for the new GFLIM
+    for (int i = 0; i < fs->n; i++)
     {
-      for (int l = 0; l < nlabels; l++)
-      {
-        sprintf(act_dir, "%s/label%d/%s", output_dir, l+1, basename);
-        iftMakeDir(act_dir);
-        for (int k = 0; k < graph->num_feats; k++)
+        char *basename = iftFilename(fs->files[i]->path, ".json");
+
+        // read the graph and the superpixels image
+        iftFLIMGraph *graph = iftReadFLIMGraph(fs->files[i]->path);
+        sprintf(filename, "%s/%s.pgm", labels_dir, basename);
+        iftImage *label_img = iftReadImageByExt(filename);
+        int nkernels = graph->num_feats;
+
+        /* Compute the scale factor w.r.t. the input of the network */
+        float scale[3];
+        sprintf(filename, "%s/%s.pgm", input_net_labels, basename);
+        iftImage *input = iftReadImageByExt(filename);
+        scale[0] = (float)input->xsize / (float)label_img->xsize;
+        scale[1] = (float)input->ysize / (float)label_img->ysize;
+        scale[2] = (float)input->zsize / (float)label_img->zsize;
+        iftDestroyImage(&input);
+
+        /* Load labels indicating class (object) per channel */
+        if (!merged_model)
         {
-          if ((l + 1) == truelabels[k]){
-            iftImage *temp = iftInterp2D(activations[k], scale[0], scale[1]);
-            sprintf(filename, "%s/kernel-%03d.%s", act_dir, k + 1, "pgm");
-            iftWriteImageByExt(temp, filename);
-            iftDestroyImage(&temp);
-          }
+            // if(!pca) {
+            sprintf(filename, "%s/model/%s-conv%d-labels.txt",
+                    model_dir, basename, layer);
+            if (iftFileExists(filename))
+            { /* load image model */
+                truelabels = iftGFLIMLoadKernelLabels(filename, &nkernels);
+                nlabels = iftGFLIMNumberOfTruelabels(truelabels, nkernels);
+            }
+            /*}else{ // not using it
+              truelabels = iftAllocIntArray(nkernels);
+              int k = 0;
+              int nlabels = 1;
+
+              sprintf(filename, "%s/model/%s-conv%d-%d", model_dir, basename, layer, nlabels);
+              while (nlabels <= nclasses && iftFileExists(filename))
+              {
+                int nkernelsClass = 0;
+                float *bias = iftGFLIMLoadBiasPCA(filename, &nkernelsClass);
+                for (int j = 0; j < nkernelsClass; j++, k++)
+                  truelabels[k] = nlabels;
+                iftFree(bias);
+                nlabels++;
+                sprintf(filename, "%s/model/%s-conv%d-%d", model_dir, basename, layer, nlabels);
+              }
+              nlabels--;
+            }*/
         }
-      }
-      for (int k = 0; k < graph->num_feats; k++)
-        iftDestroyImage(&activations[k]);
-    }
-    else // for the old GFLIM
-    {
-      sprintf(act_dir, "%s/label%d/%s", output_dir, 1, basename);
-      iftMakeDir(act_dir);
-      for (int k = 0; k < graph->num_feats; k++)
-      {
-        iftImage *temp = iftInterp2D(activations[k], scale[0], scale[1]);
-        sprintf(filename, "%s/kernel-%03d.%s", act_dir, k + 1, "pgm");
-        iftWriteImageByExt(temp, filename);
-        iftDestroyImage(&temp);
-        iftDestroyImage(&activations[k]);
-      }
-    }
-    
-    iftDestroyFLIMGraph(&graph);
-    if (!merged_model) iftFree(truelabels);
-    iftFree(activations);
-    iftFree(basename);
-  }
-  iftDestroyFileSet(&fs);
-  if (merged_model) iftFree(truelabels);
 
-  printf("\nDone ... %s\n", iftFormattedTime(iftCompTime(tstart, iftToc())));
+        // convert from graph to activations (one activation per graph channel)
+        iftImage **activations = iftFlimGraphToActivations(graph, label_img);
+        iftDestroyImage(&label_img);
 
-  return (0);
+        if (nlabels != 0) // GFLIM-BoFP
+        {
+            for (int l = 0; l < nlabels; l++)
+            {
+                sprintf(act_dir, "%s/label%d/%s", output_dir, l + 1, basename);
+                iftMakeDir(act_dir);
+                for (int k = 0; k < graph->num_feats; k++)
+                {
+                    if ((l + 1) == truelabels[k])
+                    {
+                        iftImage *temp = iftInterp2D(activations[k], scale[0], scale[1]);
+                        sprintf(filename, "%s/kernel-%03d.%s", act_dir, k + 1, "pgm");
+                        iftWriteImageByExt(temp, filename);
+                        iftDestroyImage(&temp);
+                    }
+                }
+            }
+            for (int k = 0; k < graph->num_feats; k++)
+                iftDestroyImage(&activations[k]);
+        }
+        else // GFLIM
+        {
+            sprintf(act_dir, "%s/label%d/%s", output_dir, 1, basename);
+            iftMakeDir(act_dir);
+            for (int k = 0; k < graph->num_feats; k++)
+            {
+                iftImage *temp = iftInterp2D(activations[k], scale[0], scale[1]);
+                sprintf(filename, "%s/kernel-%03d.%s", act_dir, k + 1, "pgm");
+                iftWriteImageByExt(temp, filename);
+                iftDestroyImage(&temp);
+                iftDestroyImage(&activations[k]);
+            }
+        }
+
+        iftDestroyFLIMGraph(&graph);
+        if (!merged_model)
+            iftFree(truelabels);
+        iftFree(activations);
+        iftFree(basename);
+    }
+    iftDestroyFileSet(&fs);
+    if (merged_model)
+        iftFree(truelabels);
+
+    printf("\nDone ... %s\n", iftFormattedTime(iftCompTime(tstart, iftToc())));
+
+    return (0);
 }

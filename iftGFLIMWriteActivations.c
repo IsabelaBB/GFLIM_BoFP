@@ -227,7 +227,7 @@ int main(int argc, char *argv[])
         }
 
         // convert from graph to activations (one activation per graph channel)
-        iftImage **activations = iftFlimGraphToActivations(graph, label_img);
+        iftImage **activations = iftFLIMGraphToActivations(graph, label_img);
         iftDestroyImage(&label_img);
 
         if (nlabels != 0) // GFLIM-BoFP
@@ -274,7 +274,8 @@ int main(int argc, char *argv[])
     if (merged_model)
         iftFree(truelabels);
 
-    printf("\nDone ... %s\n", iftFormattedTime(iftCompTime(tstart, iftToc())));
-
+    char *time = iftFormattedTime(iftCompTime(tstart, iftToc()));
+    printf("\nDone ... %s\n", time);
+    iftFree(time);
     return (0);
 }

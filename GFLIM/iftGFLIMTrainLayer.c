@@ -85,7 +85,8 @@ int main(int argc, char *argv[])
 
     iftDestroyFLIMArch(&save_arch);
 
-    printf("\nDone ... %s\n", iftFormattedTime(iftCompTime(tstart, iftToc())));
-
+    char *time = iftFormattedTime(iftCompTime(tstart, iftToc()));
+    printf("\nDone ... %s\n", time);
+    iftFree(time);
     return (0);
 }

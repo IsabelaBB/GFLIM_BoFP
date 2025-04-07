@@ -67,8 +67,10 @@ int main(int argc, char *argv[])
         iftError("Invalid superpixel method %d", __func__, spx_method);
         break;
     }
+    iftDestroyFileSet(&fs_imgs);
 
-    printf("Done ... %s\n", iftFormattedTime(iftCompTime(tstart, iftToc())));
-
-   return 0;
+    char *time = iftFormattedTime(iftCompTime(tstart, iftToc()));
+    printf("\nDone ... %s\n", time);
+    iftFree(time);
+    return 0;
 }

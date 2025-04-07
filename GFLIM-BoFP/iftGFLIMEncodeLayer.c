@@ -123,6 +123,8 @@ int main(int argc, char *argv[])
     iftFree(filename);
     iftDestroyFileSet(&fs);
     iftDestroyFLIMArch(&arch);
-    printf("Done ... %s\n", iftFormattedTime(iftCompTime(tstart, iftToc())));
+    char *time = iftFormattedTime(iftCompTime(tstart, iftToc()));
+    printf("\nDone ... %s\n", time);
+    iftFree(time);
     return (0);
 }

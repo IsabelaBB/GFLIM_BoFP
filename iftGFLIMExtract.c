@@ -1,10 +1,178 @@
 #include "ift.h"
 
+void validateArgs(char *images_dir, char *model_dir, iftFLIMArch *arch, int nLayers, 
+                  iftFLIMGraphType graph_type, int nsuperpixels, int batchsize, 
+                  int argc, char *argv[], int *initial_seeds)
+{
+    if (nLayers < 1)
+        iftError("Invalid number of layers: %d", "main", nLayers);
+
+    if (nLayers > arch->nlayers)
+        iftError("Invalid number of layers: %d", "main", nLayers);
+
+    if (!iftDirExists(images_dir))
+        iftError("Images directory does not exist", "main");
+
+    if (!iftDirExists(model_dir))
+        iftError("Model directory does not exist", "main");
+
+    if (nsuperpixels < 1)
+        iftError("Invalid number of superpixels: %d", "main", nsuperpixels);
+    
+    if (batchsize < 1)
+        iftError("Invalid batch size: %d", "main", batchsize);
+
+    if (graph_type == IFT_FLIMGRAPH_TYPE_DISF)
+    {
+        if (argc < 15)
+            iftError("Initial seeds is required when superpixel method is DISF", "main");
+        (*initial_seeds) = atoi(argv[14]);
+        if ((*initial_seeds) < 1)
+            iftError("Invalid number of initial seeds: %d", "main", (*initial_seeds));
+        if (nsuperpixels > (*initial_seeds))
+            iftError("Number of superpixels (%d) must be smaller than the number of initial seeds (%d)", "main", nsuperpixels, (*initial_seeds));
+    }
+}
+
+void ProcessBatch(iftFileSet *fs_imgs, int first, int last, 
+                char *images_dir, char *model_dir, char *saliency_dir,
+                int initial_seeds, int nsuperpixels, int nLayers,
+                iftFLIMGraphFeature graph_feat, iftFLIMGraphType graph_type,
+                iftFLIMGraphAttention attention_opt, iftGFLIMStrideType stride_type,
+                iftGFLIMAggregationType aggregation_opt, bool kernel_removal,
+                iftGFLIMDecoderType decoder, iftFLIMArch *arch)
+{
+    iftFLIMGraphArray *input = NULL;
+    int ngraphs_batch = last - first + 1;
+    iftImageArray *label_imgs = iftCreateImageArray(ngraphs_batch);
+    iftImageArray *label_imgs_0 = iftCreateImageArray(ngraphs_batch);
+    char filename[200];
+
+    /* Create graphs */
+    input = iftGFLIMImageToFLIMGraphBatch_v2(fs_imgs, first, last, initial_seeds, nsuperpixels, graph_feat, graph_type, label_imgs);
+
+    for (int i = 0; i < ngraphs_batch; i++)
+        label_imgs_0->val[i] = iftCopyImage(label_imgs->val[i]);
+
+    /* For each layer do */
+    for (int l = 0; l < nLayers; l++)
+    {
+        iftMatrix *Kmerged = NULL;
+        float *bias_merged = NULL;
+        int *true_labels = NULL;
+
+        sprintf(filename, "%s/model/conv%d-bias.txt", model_dir, l + 1);
+        if (iftFileExists(filename)) // is there a bias?
+        {
+            /* Load kernel and bias */
+            sprintf(filename, "%s/model/conv%d.txt", model_dir, l + 1);
+            iftGFLIMLoadMergedModel(filename, &Kmerged, &bias_merged);
+        }
+        else
+        {
+            /* Load kernel */
+            sprintf(filename, "%s/model/conv%d-kernels.npy", model_dir, l + 1);
+            if (!iftFileExists(filename))
+                iftError("Model file not found: %s", "encodeLayerBatch", filename);
+            Kmerged = iftReadMatrix(filename);
+            int ninput_channels = input->val[0]->num_feats;
+
+            /* Load mean and standard deviation */
+            float *mean = iftAllocFloatArray(ninput_channels);
+            float *stdev = iftAllocFloatArray(ninput_channels);
+            sprintf(filename, "%s/model/conv%d", model_dir, l + 1);
+            iftReadMeanStdev(filename, mean, stdev, ninput_channels);
+
+            /* Normalization (because there is no bias)*/
+#pragma omp parallel for
+            for (int i = 0; i < input->n; i++)
+                iftNormalizeFLIMGraphByZScore(input->val[i], mean, stdev);
+            iftFree(mean);
+            iftFree(stdev);
+        }
+
+        /* Load labels indicating class (label) per channel */
+        if (attention_opt != IFT_FLIMGRAPH_ATTENTION_NONE && bias_merged != NULL)
+        {
+            sprintf(filename, "%s/model/conv%d-labels.txt", model_dir, l + 1);
+            if (!iftFileExists(filename))
+                iftError("File %s does not exist", "main", filename);
+            int nkernels = 0;
+            true_labels = iftGFLIMLoadKernelLabels(filename, &nkernels);
+        }
+
+        iftGFLIMEncodeLayerBatch_v2(input, Kmerged, arch->layer[l], label_imgs, bias_merged, stride_type, attention_opt, true_labels, aggregation_opt, kernel_removal);
+
+        iftDestroyMatrix(&Kmerged);
+        iftFree(bias_merged);
+        iftFree(true_labels);
+    }
+
+    /* Load labels indicating class (object) per channel */
+    int *truelabels = NULL, nlabels = 0, nkernels;
+    sprintf(filename, "%s/model/conv%d-labels.txt", model_dir, nLayers);
+    if (iftFileExists(filename))
+    {
+        truelabels = iftGFLIMLoadKernelLabels(filename, &nkernels);
+        nlabels = iftGFLIMNumberOfTruelabels(truelabels, nkernels);
+    }
+    else
+        nlabels = 1;
+
+    // decode
+    for (int k = 0; k < ngraphs_batch; k++)
+    {
+        char ext[10];
+        sprintf(ext, "%s", iftFileExt(fs_imgs->files[k + first]->path));
+        char *basename = iftFilename(fs_imgs->files[k + first]->path, ext);
+
+        iftImageArray *saliency = iftGFLIMDecodeLayer(input->val[k], label_imgs->val[k], label_imgs_0->val[k], truelabels, nlabels, decoder);
+
+        char tmp[400], out_file[512];
+        /* post-process and save the salience maps */
+        if (nlabels == 1)
+        {
+            sprintf(tmp, "%s", saliency_dir);
+            if (!iftDirExists(tmp))
+                iftMakeDir(tmp);
+
+            if (iftIs3DImage(label_imgs->val[k]))
+                sprintf(out_file, "%s/%s.nii.gz", tmp, basename);
+            else
+                sprintf(out_file, "%s/%s.png", tmp, basename);
+            iftWriteImageByExt(saliency->val[0], out_file);
+        }
+        else
+        {
+            for (int l = 0; l < nlabels; l++)
+            {
+                sprintf(tmp, "%s/label%d", saliency_dir, l + 1);
+                if (!iftDirExists(tmp))
+                    iftMakeDir(tmp);
+
+                if (iftIs3DImage(label_imgs->val[k]))
+                    sprintf(out_file, "%s/%s.nii.gz", tmp, basename);
+                else
+                    sprintf(out_file, "%s/%s.png", tmp, basename);
+                iftWriteImageByExt(saliency->val[l], out_file);
+            }
+        }
+        iftDestroyImageArray(&saliency);
+        iftFree(basename);
+    }
+
+    iftDestroyImageArray(&label_imgs_0);
+    iftDestroyImageArray(&label_imgs);
+    iftDestroyFLIMGraphArray(&input);
+    iftFree(truelabels);
+}
+
 int main(int argc, char *argv[])
 {
     timer *tstart;
 
-    if (argc != 15 && argc != 14){
+    if (argc != 15 && argc != 14)
+    {
         iftError("Usage: iftGFLIMExtract <P1> <P2> <P3> <P4> <P5> <P6> <P7> <P8> <P9> <P10> <P11> <P12> <P13> [<P14>] \n"
                  "[ 1] Images directory \n"
                  "[ 2] Model directory \n"
@@ -40,54 +208,27 @@ int main(int argc, char *argv[])
     bool kernel_removal = atoi(argv[13]);
 
     int initial_seeds = 0;
-
-    if (nLayers < 1)
-        iftError("Invalid number of layers: %d", "main", nLayers);
-
-    if (nLayers > arch->nlayers)
-        iftError("Invalid number of layers: %d", "main", nLayers);
-
-    if (!iftDirExists(images_dir))
-        iftError("Images directory does not exist", "main");
-
-    if (!iftDirExists(model_dir))
-        iftError("Model directory does not exist", "main");
-
-    if (nsuperpixels < 1)
-        iftError("Invalid number of superpixels: %d", "main", nsuperpixels);
-        
-    if (graph_type == IFT_FLIMGRAPH_TYPE_DISF)
-    {
-        if (argc < 15)
-            iftError("Initial seeds is required when superpixel method is DISF", "main");
-        initial_seeds = atoi(argv[14]);
-        if (initial_seeds < 1)
-            iftError("Invalid number of initial seeds: %d", "main", initial_seeds);
-        if (nsuperpixels > initial_seeds)
-            iftError("Number of superpixels (%d) must be smaller than the number of initial seeds (%d)", "main", nsuperpixels, initial_seeds);
-    }
+    validateArgs(images_dir, model_dir, arch, nLayers, graph_type, nsuperpixels, batchsize, argc, argv, &initial_seeds);
 
     iftFileSet *fs_imgs = iftLoadFileSetFromDir(images_dir, 1);
     int ngraphs = fs_imgs->n;
     int nbatches = 0;
     int nremaining_graphs = fs_imgs->n;
-    int ninput_channels = 3;
     char saliency_dir[200];
 
-    if (fs_imgs->n < 1) iftError("Image list is empty", __func__);
-
-    if (batchsize < 1) iftError("Invalid batch size: %d", "main", batchsize);
+    if (fs_imgs->n < 1)
+        iftError("Image list is empty", __func__);
 
     batchsize = iftMin(batchsize, ngraphs);
     nbatches = ngraphs / batchsize;
     nremaining_graphs = nremaining_graphs - nbatches * batchsize;
-    
+
     switch (decoder)
     {
     case IFT_GFLIM_TRISTATE_DECODER:
         sprintf(saliency_dir, "%s/tristate_%d", model_dir, nLayers);
         break;
-    
+
     case IFT_GFLIM_HYBRID_DECODER:
         sprintf(saliency_dir, "%s/hybrid_%d", model_dir, nLayers);
         break;
@@ -112,127 +253,12 @@ int main(int argc, char *argv[])
         printf("Processing batch %d of %d batches\n", batch + 1, nbatches);
         fflush(stdout);
 
-        iftFLIMGraphArray *input = NULL;
-        int ngraphs_batch = last - first + 1;
-        iftImageArray *label_imgs = iftCreateImageArray(ngraphs_batch);
-        iftImageArray *label_imgs_0 = iftCreateImageArray(ngraphs_batch);
-        char filename[200];
-
-        /* Create graphs */
-        input = iftGFLIMImageToFLIMGraphBatch_v2(fs_imgs, first, last, initial_seeds, nsuperpixels, graph_feat, graph_type, label_imgs);
-        
-        for(int i = 0; i < ngraphs_batch; i++)
-            label_imgs_0->val[i] = iftCopyImage(label_imgs->val[i]);
-        
-        /* For each layer do */
-        for (int l = 0; l < nLayers; l++)
-        {
-            iftMatrix *Kmerged = NULL;
-            float *bias_merged = NULL;
-            int *true_labels = NULL;
-
-            sprintf(filename, "%s/model/conv%d-bias.txt", model_dir, l + 1);
-            if (iftFileExists(filename)) // is there a bias?
-            {
-                /* Load kernel and bias */
-                sprintf(filename, "%s/model/conv%d.txt", model_dir, l + 1);
-                iftGFLIMLoadMergedModel(filename, &Kmerged, &bias_merged);
-            }
-            else
-            {
-                /* Load kernel */
-                sprintf(filename, "%s/model/conv%d-kernels.npy", model_dir, l + 1);
-                if (!iftFileExists(filename))
-                    iftError("Model file not found: %s", "encodeLayerBatch", filename);
-                Kmerged = iftReadMatrix(filename);
-
-                /* Load mean and standard deviation */
-                float *mean = iftAllocFloatArray(ninput_channels);
-                float *stdev = iftAllocFloatArray(ninput_channels);
-                sprintf(filename, "%s/model/conv%d", model_dir, l + 1);
-                iftReadMeanStdev(filename, mean, stdev, ninput_channels);
-
-                /* Normalization (because there is no bias)*/
-                for (int i = 0; i < input->n; i++)
-                    iftNormalizeFLIMGraphByZScore(input->val[i], mean, stdev);
-                iftFree(mean);
-                iftFree(stdev);
-            }
-
-            /* Load labels indicating class (label) per channel */
-            if (attention_opt != IFT_FLIMGRAPH_ATTENTION_NONE && bias_merged != NULL)
-            {
-                sprintf(filename, "%s/model/conv%d-labels.txt", model_dir, l + 1);
-                if (!iftFileExists(filename))
-                    iftError("File %s does not exist", "main", filename);
-                int nkernels = 0;
-                true_labels = iftGFLIMLoadKernelLabels(filename, &nkernels);
-            }
-
-            iftGFLIMEncodeLayerBatch_v2(input, Kmerged, arch->layer[l], label_imgs, bias_merged, stride_type, attention_opt, true_labels, aggregation_opt, kernel_removal);
-            iftDestroyMatrix(&Kmerged);
-            if (bias_merged != NULL)
-                iftFree(bias_merged);
-            if (true_labels != NULL)
-                iftFree(true_labels);
-        }
-
-        /* Load labels indicating class (object) per channel */
-        int *truelabels = NULL, nlabels = 0, nkernels;
-        sprintf(filename, "%s/model/conv%d-labels.txt", model_dir, nLayers);
-        if (iftFileExists(filename))
-        {
-            truelabels = iftGFLIMLoadKernelLabels(filename, &nkernels);
-            nlabels = iftGFLIMNumberOfTruelabels(truelabels, nkernels);
-        }
-
-        // decode
-#pragma omp parallel for
-        for (int k = 0; k < ngraphs_batch; k++)
-        {
-            char ext[10];
-            sprintf(ext, "%s", iftFileExt(fs_imgs->files[k + first]->path));
-            char *basename = iftFilename(fs_imgs->files[k + first]->path, ext);
-            
-            iftImageArray *saliency = iftGFLIMDecodeLayer(input->val[k], label_imgs->val[k], label_imgs_0->val[k], truelabels, nlabels, decoder);
-
-            char tmp[400], out_file[512];
-            /* post-process and save the salience maps */
-            if (nlabels == 1)
-            {
-                sprintf(tmp, "%s", saliency_dir);
-                if (!iftDirExists(tmp))
-                    iftMakeDir(tmp);
-
-                if (iftIs3DImage(label_imgs->val[k]))
-                    sprintf(out_file, "%s/%s.nii.gz", tmp, basename);
-                else
-                    sprintf(out_file, "%s/%s.png", tmp, basename);
-                iftWriteImageByExt(saliency->val[0], out_file);
-            }
-            else
-            {
-                for (int l = 0; l < nlabels; l++)
-                {
-                    sprintf(tmp, "%s/label%d", saliency_dir, l + 1);
-                    if (!iftDirExists(tmp))
-                        iftMakeDir(tmp);
-
-                    if (iftIs3DImage(label_imgs->val[k]))
-                        sprintf(out_file, "%s/%s.nii.gz", tmp, basename);
-                    else
-                        sprintf(out_file, "%s/%s.png", tmp, basename);
-                    iftWriteImageByExt(saliency->val[l], out_file);
-                }
-            }
-            iftDestroyImageArray(&saliency);
-            iftDestroyFLIMGraph(&input->val[k]);
-            iftFree(basename);
-        }
-        iftDestroyImageArray(&label_imgs_0);
-        iftDestroyImageArray(&label_imgs);
-        iftFree(input);
-        iftFree(truelabels);
+        ProcessBatch(fs_imgs, first, last, images_dir, model_dir, saliency_dir,
+                    initial_seeds, nsuperpixels, nLayers,
+                    graph_feat, graph_type,
+                    attention_opt, stride_type,
+                    aggregation_opt, kernel_removal,
+                    decoder, arch);
     }
 
     int first = ngraphs - nremaining_graphs, last = ngraphs - 1;
@@ -241,127 +267,12 @@ int main(int argc, char *argv[])
         printf("Processing remaining %d images\n", last - first + 1);
         fflush(stdout);
 
-        iftFLIMGraphArray *input = NULL;
-        int ngraphs_batch = last - first + 1;
-        iftImageArray *label_imgs = iftCreateImageArray(ngraphs_batch);
-        iftImageArray *label_imgs_0 = iftCreateImageArray(ngraphs_batch);
-        char filename[200];
-
-        /* Create graphs */
-        input = iftGFLIMImageToFLIMGraphBatch_v2(fs_imgs, first, last, initial_seeds, nsuperpixels, graph_feat, graph_type, label_imgs);
-
-        for(int i = 0; i < ngraphs_batch; i++)
-            label_imgs_0->val[i] = iftCopyImage(label_imgs->val[i]);
-
-        /* For each layer do */
-        for (int l = 0; l < nLayers; l++)
-        {
-            iftMatrix *Kmerged = NULL;
-            float *bias_merged = NULL;
-            int *true_labels = NULL;
-
-            sprintf(filename, "%s/model/conv%d-bias.txt", model_dir, l + 1);
-            if (iftFileExists(filename)) // is there a bias?
-            {
-                /* Load kernel and bias */
-                sprintf(filename, "%s/model/conv%d.txt", model_dir, l + 1);
-                iftGFLIMLoadMergedModel(filename, &Kmerged, &bias_merged);
-            }
-            else
-            {
-                /* Load kernel */
-                sprintf(filename, "%s/model/conv%d-kernels.npy", model_dir, l + 1);
-                if (!iftFileExists(filename))
-                    iftError("Model file not found: %s", "encodeLayerBatch", filename);
-                Kmerged = iftReadMatrix(filename);
-
-                /* Load mean and standard deviation */
-                float *mean = iftAllocFloatArray(ninput_channels);
-                float *stdev = iftAllocFloatArray(ninput_channels);
-                sprintf(filename, "%s/model/conv%d", model_dir, l + 1);
-                iftReadMeanStdev(filename, mean, stdev, ninput_channels);
-
-                /* Normalization (because there is no bias)*/
-                for (int i = 0; i < input->n; i++)
-                    iftNormalizeFLIMGraphByZScore(input->val[i], mean, stdev);
-                iftFree(mean);
-                iftFree(stdev);
-            }
-
-            /* Load labels indicating class (label) per channel */
-            if (attention_opt != IFT_FLIMGRAPH_ATTENTION_NONE && bias_merged != NULL)
-            {
-                sprintf(filename, "%s/model/conv%d-labels.txt", model_dir, l + 1);
-                if (!iftFileExists(filename))
-                    iftError("File %s does not exist", "main", filename);
-                int nkernels = 0;
-                true_labels = iftGFLIMLoadKernelLabels(filename, &nkernels);
-            }
-
-            iftGFLIMEncodeLayerBatch_v2(input, Kmerged, arch->layer[l], label_imgs, bias_merged, stride_type, attention_opt, true_labels, aggregation_opt, kernel_removal);
-            iftDestroyMatrix(&Kmerged);
-            if (bias_merged != NULL)
-                iftFree(bias_merged);
-            if (true_labels != NULL)
-                iftFree(true_labels);
-        }
-
-        /* Load labels indicating class (object) per channel */
-        int *truelabels = NULL, nlabels = 0, nkernels;
-        sprintf(filename, "%s/model/conv%d-labels.txt", model_dir, nLayers);
-        if (iftFileExists(filename))
-        {
-            truelabels = iftGFLIMLoadKernelLabels(filename, &nkernels);
-            nlabels = iftGFLIMNumberOfTruelabels(truelabels, nkernels);
-        }
-
-        // decode
-#pragma omp parallel for
-        for (int k = 0; k < ngraphs_batch; k++)
-        {
-            char ext[10];
-            sprintf(ext, "%s", iftFileExt(fs_imgs->files[k + first]->path));
-            char *basename = iftFilename(fs_imgs->files[k + first]->path, ext);
-            
-            iftImageArray *saliency = iftGFLIMDecodeLayer(input->val[k], label_imgs->val[k], label_imgs_0->val[k], truelabels, nlabels, decoder);
-            
-            char tmp[400], out_file[512];
-            /* post-process and save the salience maps */
-            if (nlabels == 1)
-            {
-                sprintf(tmp, "%s", saliency_dir);
-                if (!iftDirExists(tmp))
-                    iftMakeDir(tmp);
-
-                if (iftIs3DImage(label_imgs->val[k]))
-                    sprintf(out_file, "%s/%s.nii.gz", tmp, basename);
-                else
-                    sprintf(out_file, "%s/%s.png", tmp, basename);
-                iftWriteImageByExt(saliency->val[0], out_file);
-            }
-            else
-            {
-                for (int l = 0; l < nlabels; l++)
-                {
-                    sprintf(tmp, "%s/label%d", saliency_dir, l + 1);
-                    if (!iftDirExists(tmp))
-                        iftMakeDir(tmp);
-
-                    if (iftIs3DImage(label_imgs->val[k]))
-                        sprintf(out_file, "%s/%s.nii.gz", tmp, basename);
-                    else
-                        sprintf(out_file, "%s/%s.png", tmp, basename);
-                    iftWriteImageByExt(saliency->val[l], out_file);
-                }
-            }
-            iftDestroyImageArray(&saliency);
-            iftDestroyFLIMGraph(&input->val[k]);
-            iftFree(basename);
-        }
-        iftDestroyImageArray(&label_imgs_0);
-        iftDestroyImageArray(&label_imgs);
-        iftFree(input);
-        iftFree(truelabels);
+        ProcessBatch(fs_imgs, first, last, images_dir, model_dir, saliency_dir,
+            initial_seeds, nsuperpixels, nLayers,
+            graph_feat, graph_type,
+            attention_opt, stride_type,
+            aggregation_opt, kernel_removal,
+            decoder, arch);
     }
 
     iftDestroyFileSet(&fs_imgs);

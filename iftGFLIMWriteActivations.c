@@ -138,9 +138,9 @@ int main(int argc, char *argv[])
     else
     {
         sprintf(filename, "%s/model/conv%d-bias.txt", model_dir, layer);
-        if (iftFileExists(filename)) // is there a bias?
+        if (iftFileExists(filename))                                         // is there a bias?
             sprintf(output_dir, "%s/activationNoMerge%d", model_dir, layer); // non merged layer in GFLIM-BoFP
-        else // GFLIM
+        else                                                                 // GFLIM
         {
             merged_model = true;
             sprintf(output_dir, "%s/activation%d", model_dir, layer);

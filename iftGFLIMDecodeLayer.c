@@ -106,25 +106,30 @@ int main(int argc, char *argv[])
         iftImage *input = iftReadImageByExt(filename);
 
         int nkernels = graph->num_feats;
-        int *truelabels = NULL, nlabels = 0;
-        sprintf(filename, "%s/model/conv%d-labels.txt", model_dir, layer);
-        if (iftFileExists(filename))
-        { 
-            /* load merged model */
-            truelabels = iftGFLIMLoadKernelLabels(filename, &nkernels);
-            nlabels = iftGFLIMNumberOfTruelabels(truelabels, nkernels);
-        }
-        else
+        int *truelabels = NULL, nlabels = 1;
+        if (decoder != IFT_GFLIM_TRISTATE_DECODER)
         {
-            sprintf(filename, "%s/model/%s-conv%d-labels.txt",
-                    model_dir, basename, layer);
+            sprintf(filename, "%s/model/conv%d-labels.txt", model_dir, layer);
             if (iftFileExists(filename))
-            { 
-                /* load image model */
+            {
+                /* load merged model */
                 truelabels = iftGFLIMLoadKernelLabels(filename, &nkernels);
                 nlabels = iftGFLIMNumberOfTruelabels(truelabels, nkernels);
-            }else{
-                iftError("File %s does not exist", "main", filename);
+            }
+            else
+            {
+                sprintf(filename, "%s/model/%s-conv%d-labels.txt",
+                        model_dir, basename, layer);
+                if (iftFileExists(filename))
+                {
+                    /* load image model */
+                    truelabels = iftGFLIMLoadKernelLabels(filename, &nkernels);
+                    nlabels = iftGFLIMNumberOfTruelabels(truelabels, nkernels);
+                }
+                else
+                {
+                    iftError("File %s does not exist", "main", filename);
+                }
             }
         }
 

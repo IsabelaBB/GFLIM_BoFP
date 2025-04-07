@@ -21,10 +21,10 @@ void usage()
 int main(int argc, char *argv[])
 {
 #ifdef IFT_DEBUG
-   printf("function %s \n", __func__);
+    printf("function %s \n", __func__);
 #endif
 
-    if(argc != 7 && argc != 6)
+    if (argc != 7 && argc != 6)
     {
         usage();
         return 1;
@@ -38,34 +38,60 @@ int main(int argc, char *argv[])
     iftFLIMGraphType spx_method = iftGFLIMGetGraphType(argv[5]);
 
     int initial_seeds = 0;
-    if(spx_method == IFT_FLIMGRAPH_TYPE_DISF)
+    if (spx_method == IFT_FLIMGRAPH_TYPE_DISF)
     {
-        if(argc != 7)
+        if (argc != 7)
             iftError("Number of initial seeds is required for DISF method", __func__);
-        else initial_seeds = atoi(argv[6]);
+        else
+            initial_seeds = atoi(argv[6]);
     }
 
 #ifdef IFT_DEBUG
-   printArgs(images_dir, final_spx, model_dir, graph_feat, spx_method, initial_seeds);
+    printArgs(images_dir, final_spx, model_dir, graph_feat, spx_method, initial_seeds);
 #endif
 
     char graphs_dir[200], labels_dir[200];
     sprintf(graphs_dir, "%s/layer0", model_dir);
     sprintf(labels_dir, "%s/labels0", model_dir);
-    
-    switch (spx_method)
-    {
-    case IFT_FLIMGRAPH_TYPE_DISF: // segmentation using DISF
-        iftImageToFLIMGraphDISFDir(images_dir, labels_dir, graphs_dir, initial_seeds, final_spx, graph_feat);
-        break;
-    
-    case IFT_FLIMGRAPH_TYPE_ERGC: // segmentation using ERGC
-        iftImageToFLIMGraphERGCDir(images_dir, labels_dir, graphs_dir, final_spx, 0, graph_feat);
-        break;
 
-    default:
-        iftError("Invalid superpixel method %d", __func__, spx_method);
-        break;
+    if (images_dir == NULL || !iftDirExists(images_dir))
+        iftError("Image directory does not exist", __func__);
+    if (final_spx < 1)
+        iftError("Number of superpixels must be positive", __func__);
+
+    iftFileSet *fs_imgs = iftLoadFileSetFromDir(images_dir, 1);
+    if (fs_imgs->n < 1)
+        iftError("No images found in the directory", __func__);
+
+    if (!iftDirExists(graphs_dir))
+        iftMakeDir(graphs_dir);
+    if (!iftDirExists(labels_dir))
+        iftMakeDir(labels_dir);
+
+    for (int i = 0; i < fs_imgs->n; i++)
+    {
+        char *basename = NULL;
+        char filename[200], ext[10];
+
+        sprintf(ext, "%s", iftFileExt(fs_imgs->files[i]->path));
+        basename = iftFilename(fs_imgs->files[i]->path, ext);
+
+        iftImage *label_img;
+        iftImage *img = iftReadImageByExt(fs_imgs->files[i]->path);
+
+        iftFLIMGraph *graph = iftImageToFLIMGraph(img, final_spx, initial_seeds, &label_img, graph_feat, spx_method);
+
+        sprintf(filename, "%s/%s.pgm", labels_dir, basename);
+        iftWriteImageByExt(label_img, filename);
+
+        sprintf(filename, "%s/%s.json", graphs_dir, basename);
+        iftWriteFLIMGraph(graph, filename);
+
+        iftDestroyImage(&label_img);
+        iftDestroyFLIMGraph(&graph);
+        iftDestroyImage(&img);
+
+        iftFree(basename);
     }
     iftDestroyFileSet(&fs_imgs);
 

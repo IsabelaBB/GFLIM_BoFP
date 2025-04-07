@@ -19,20 +19,18 @@ parser.add_argument("final_spx", help="Final superpixels", type=int)
 parser.add_argument("graph_feat", help="Graph feature (see iftGFLIMGraph.h for more information)", type=str, choices=["MEAN", "SUM", "SUM_MULT_RELSIZE", "MEAN_MULT_RELSIZE", 
                                                                                                                       "MEAN_CONCAT_RELSIZE", "MEAN_CONCAT_RELSIZE_NEIGHB", 
                                                                                                                       "MEAN_CONCAT_RELSIZE_HARALICK", 
-                                                                                                                      "SUM_MULT_RELSIZE_CONCAT_HARALICK", "SUM_CONCAT_HARALICK"
-                                                                                                                      ])
+                                                                                                                      "SUM_MULT_RELSIZE_CONCAT_HARALICK", "SUM_CONCAT_HARALICK"])
 parser.add_argument("spx_alg", help="Superpixel algorithm.", type=str, choices=["DISF", "ERGC"])
 parser.add_argument("decoder", help="Decoder type.", type=str, choices=["tristate", "hybrid", "graph-adaptive", "gaussian"])
-parser.add_argument("attention", help="Attention option.", type=str, choices=["NONE", "NODE_RELSIZE", "NODE_SIZE", "NEIGHB_SIMIL", "NEIGHB_SIZE", 
-                                                                                "CLASS_DOMINANCE", "CLASS_DOMINANCE_WINNER", 
-                                                                                "CLASS_DOMINANCE_WINNER_POWER2", "CLASS_DOMINANCE_SOFTMAX_NEIGHB",
-                                                                                "COSINE_SIMILARITY"])
+parser.add_argument("attention", help="Attention option.", type=str, choices=["NONE", "NODE_RELSIZE", "NODE_SIZE", "NEIGHB_SIMIL", "COSINE_SIMILARITY", #"NEIGHB_SIZE", 
+                                                                                "CLASS_DOMINANCE_TEST", "CLASS_DOMINANCE", 
+                                                                                "CLASS_DOMINANCE_WINNER_POWER2", "CLASS_DOMINANCE_SOFTMAX_NEIGHB"])
 parser.add_argument("aggregation", help="Aggregation option.", type=str, choices=["CONCAT", "MEAN", "WMEAN"])
 parser.add_argument("-init_seeds", "--init_seeds", help="Initial number of seeds in DISF. Required only if spx_alg is DISF", type=int, default=0)
 parser.add_argument("-act", "--activation", help="Write activations", action="store_true")
 parser.add_argument("-reduce_kernels", "--reduce_kernels", help="Use another k-means to reduce the number of kernels to 64 per layer maximum.", type=int, default=0)
 parser.add_argument("-dropout", "--dropout", help=" ", action="store_true")
-parser.add_argument("-path", "--path", help=" ", type=str, default="~/Codes/LibIFT")
+parser.add_argument("-path", "--path", help=" ", type=str, default="/home/isabela/Codes/LibIFT/bin")
 
 def setFunctions(path):
     return {
@@ -87,8 +85,8 @@ def rmdir(path):
 def CallFunction(function, args, msg=None):
     if(msg is not None):
         print(msg)
-    os.system("{} {}".format(function, " ".join([str(i) for i in args])))
-    #print("{} {}".format(function, " ".join([str(i) for i in args])))
+    #os.system("{} {}".format(function, " ".join([str(i) for i in args])))
+    print("{} {}".format(function, " ".join([str(i) for i in args])))
 
 
 args = parser.parse_args()

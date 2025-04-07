@@ -14,21 +14,27 @@ parser.add_argument("arch_file", help="Arch file", type=str)
 parser.add_argument("nlayers", help="Number of layers (if negative, do not encode layers again)", type=int)
 parser.add_argument("model_dir", help="Model directory", type=str)
 parser.add_argument("final_spx", help="Final superpixels", type=int)
-parser.add_argument("init_seeds", help="Initial number of seeds in DISF", type=int, default=0)
+parser.add_argument("graph_feat", help="Graph feature (see iftGFLIMGraph.h for more information)", type=str, choices=["MEAN", "SUM", "SUM_MULT_RELSIZE", "MEAN_MULT_RELSIZE", 
+                                                                                                                      "MEAN_CONCAT_RELSIZE", "MEAN_CONCAT_RELSIZE_NEIGHB", 
+                                                                                                                      "MEAN_CONCAT_RELSIZE_HARALICK", 
+                                                                                                                      "SUM_MULT_RELSIZE_CONCAT_HARALICK", "SUM_CONCAT_HARALICK"])
+parser.add_argument("spx_alg", help="Superpixel algorithm.", type=str, choices=["DISF", "ERGC"])
+parser.add_argument("-init_seeds", "--init_seeds", help="Initial number of seeds in DISF. Required only if spx_alg is DISF", type=int, default=0)
 parser.add_argument("-act", "--activation", help="Write activations", action="store_true")
-parser.add_argument("-path", "--path", help=" ", type=str, default="~/Codes/LibIFT")
+parser.add_argument("-path", "--path", help=" ", type=str, default="/home/isabela/Codes/LibIFT/bin")
 
 def setFunctions(path):
     return {
         'CreateGraph': '{}/iftCreateGFLIMGraph'.format(path),
         'ConvertSeeds': '{}/iftGFLIMConvertSeeds'.format(path),
         'TrainLayer': '{}/iftGFLIMTrainLayer'.format(path),
+        'WriteActivations': '{}/iftGFLIMWriteActivations'.format(path),
         'DecodeLayer': '{}/iftGFLIMDecodeLayer'.format(path),
     }
 
 def verifyArgs(args):
     if(os.path.exists(args.path) == False):
-        print("Path to exec files does not exist")
+        print("Path to exec files does not exist:", args.path)
         exit()
 
     if(os.path.exists(args.img_dir) == False):

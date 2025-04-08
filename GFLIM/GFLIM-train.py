@@ -21,7 +21,7 @@ parser.add_argument("graph_feat", help="Graph feature (see iftGFLIMGraph.h for m
 parser.add_argument("spx_alg", help="Superpixel algorithm.", type=str, choices=["DISF", "ERGC"])
 parser.add_argument("-init_seeds", "--init_seeds", help="Initial number of seeds in DISF. Required only if spx_alg is DISF", type=int, default=0)
 parser.add_argument("-act", "--activation", help="Write activations", action="store_true")
-parser.add_argument("-path", "--path", help=" ", type=str, default="/home/isabela/Codes/LibIFT/bin")
+parser.add_argument("-path", "--path", help=" ", type=str, default="../bin")
 
 def setFunctions(path):
     return {

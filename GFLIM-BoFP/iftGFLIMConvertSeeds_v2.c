@@ -166,8 +166,8 @@ int main(int argc, char *argv[]) {
       iftError("Usage: iftReduceSeedSet <P1> <P2> <P3> <P4> <P5> <P6> <P7> \n"
 	       "P1: model folder\n"
 	       "P2: image markers folder \n"
-         "P3: kernel size \n"
-	       "P4: number of feature points per marker \n"
+         "P3: number of feature points per marker \n"
+         "P4: kernel size \n"
          "P5: number of feature points per label \n"
          "P6: attention option (NONE, NODE_SIZE, NEIGHB_SIMIL, NEIGHB_SIZE) \n"
          "P7: aggregation strategy (CONCAT, MEAN, WMEAN) \n",
@@ -177,8 +177,8 @@ int main(int argc, char *argv[]) {
 
     char *model_dir = argv[1];
     char *image_markers_dir = argv[2];
-    int kernel_size = atoi(argv[3]);
-    int nfpts_per_marker = atoi(argv[4]); 
+    int nfpts_per_marker = atoi(argv[3]); 
+    int kernel_size = atoi(argv[4]);
     int nfpts_per_label = atoi(argv[5]);
     iftFLIMGraphAttention attention_opt = iftGLIMGraphGetAttentionType(argv[6]);
     iftGFLIMAggregationType aggregation_opt = iftGLIMGraphGetAggregationType(argv[7]);

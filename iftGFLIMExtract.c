@@ -65,7 +65,7 @@ void ProcessBatch(iftFileSet *fs_imgs, int first, int last,
         if (iftFileExists(filename)) // is there a bias?
         {
             /* Load kernel and bias */
-            sprintf(filename, "%s/model/conv%d.txt", model_dir, l + 1);
+            sprintf(filename, "%s/model/conv%d", model_dir, l + 1);
             iftGFLIMLoadMergedModel(filename, &Kmerged, &bias_merged);
         }
         else

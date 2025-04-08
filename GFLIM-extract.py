@@ -28,7 +28,7 @@ parser.add_argument("aggregation", help="Aggregation option.", type=str, choices
 
 parser.add_argument("-init_seeds", "--init_seeds", help="Initial number of seeds in DISF. Required only if spx_alg is DISF", type=int, default=0)
 parser.add_argument("-dropout", "--dropout", help=" ", action="store_true")
-parser.add_argument("-path", "--path", help=" ", type=str, default="/home/isabela/Codes/LibIFT/bin")
+parser.add_argument("-path", "--path", help=" ", type=str, default="../bin")
 
 
 def verifyArgs(path):
@@ -70,8 +70,8 @@ verifyArgs(args)
 
 vals = [args.img_dir, args.model_dir, args.arch_file, args.nlayers, args.graph_feat, args.spx_alg, args.final_spx, args.decoder, args.batch_size, args.stride, args.attention, args.aggregation, 1 if args.dropout else 0, args.init_seeds]
 line = "{} {}".format("{}/iftGFLIMExtract".format(args.path), " ".join([str(i) for i in vals]))
-#os.system(line)
-print(line)
+os.system(line)
+#print(line)
 
 for layer in range(1,args.nlayers+1):
     line = "{}/labels{}".format(args.model_dir, layer-1)

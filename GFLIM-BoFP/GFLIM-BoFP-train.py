@@ -30,13 +30,13 @@ parser.add_argument("-init_seeds", "--init_seeds", help="Initial number of seeds
 parser.add_argument("-act", "--activation", help="Write activations", action="store_true")
 parser.add_argument("-reduce_kernels", "--reduce_kernels", help="Use another k-means to reduce the number of kernels to 64 per layer maximum.", type=int, default=0)
 parser.add_argument("-dropout", "--dropout", help=" ", action="store_true")
-parser.add_argument("-path", "--path", help=" ", type=str, default="/home/isabela/Codes/LibIFT/bin")
+parser.add_argument("-path", "--path", help=" ", type=str, default="../bin")
 
 def setFunctions(path):
     return {
         'CreateGraph': '{}/iftCreateGFLIMGraph'.format(path),
-        'ReduceSeeds': '{}/iftReduceSeedSet'.format(path),
-        'ReduceSeeds2': '{}/iftReduceSeedSet_v2'.format(path),
+        'ConvertSeeds': '{}/iftGFLIMConvertSeeds'.format(path),
+        'ConvertSeeds2': '{}/iftGFLIMConvertSeeds_v2'.format(path),
         'CreateLayerModel': '{}/iftGFLIMCreateLayerModel'.format(path),
         'EncodeLayer': '{}/iftGFLIMEncodeLayer'.format(path),
         'WriteActivations': '{}/iftGFLIMWriteActivations'.format(path),
@@ -85,8 +85,8 @@ def rmdir(path):
 def CallFunction(function, args, msg=None):
     if(msg is not None):
         print(msg)
-    #os.system("{} {}".format(function, " ".join([str(i) for i in args])))
-    print("{} {}".format(function, " ".join([str(i) for i in args])))
+    os.system("{} {}".format(function, " ".join([str(i) for i in args])))
+    #print("{} {}".format(function, " ".join([str(i) for i in args])))
 
 
 args = parser.parse_args()
@@ -95,21 +95,20 @@ functions = setFunctions(args.path)
 rmdir(args.model_dir)
 verifyArgs(args)
 
-if(args.kmeans):
-    with open(args.arch_file) as f:
-        data = json.load(f)
-        kernel_size = data['layer1']['conv']['kernel_size'][0]*data['layer1']['conv']['kernel_size'][1]
-        nfeat_markers = data['layer1']['conv']["nkernels_per_marker"]
+with open(args.arch_file) as f:
+    data = json.load(f)
+    kernel_size = data['layer1']['conv']['kernel_size'][0]*data['layer1']['conv']['kernel_size'][1]
+    nfeat_markers = data['layer1']['conv']["nkernels_per_marker"]
 
 os.makedirs(args.model_dir, exist_ok=True)
 
 CallFunction(functions['CreateGraph'], [args.img_dir, args.final_spx, args.model_dir, args.graph_feat, args.spx_alg, args.init_seeds], 'Create Graphs')
 
-
 if(args.reduce_kernels > 0):
-    CallFunction(functions['ReduceSeeds2'], [args.model_dir, args.markers_dir, kernel_size, nfeat_markers, args.attention, args.aggregation, args.reduce_kernels], 'Convert seeds from image to graph and perform a k-means per marker')
+    CallFunction(functions['ConvertSeeds2'], [args.model_dir, args.markers_dir, nfeat_markers, kernel_size, args.reduce_kernels, args.attention, args.aggregation], 'Convert seeds from image to graph and perform a k-means per marker')
 else:
-    CallFunction(functions['ReduceSeeds'], [args.model_dir, args.markers_dir, kernel_size, nfeat_markers, args.attention, args.aggregation], 'Convert seeds from image to graph and perform a k-means per marker and a k-means per label')
+    CallFunction(functions['ConvertSeeds'], [args.model_dir, args.markers_dir, nfeat_markers, kernel_size, args.attention, args.aggregation], 'Convert seeds from image to graph and perform a k-means per marker and a k-means per label')
+    
 
 for layer in range(1,args.nlayers+1):
     print("Layer {}".format(layer))

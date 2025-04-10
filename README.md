@@ -26,7 +26,7 @@ The executable files will be created at LibIFT/bin
 ### Pre-processing
 
 - [iftCreateGFLIMGraph](iftCreateGFLIMGraph.c): Convert images into graphs for a GFLIM or GFLIM-BoFP model.
-- [iftGFLIMConvertSeeds](iftGFLIMConvertSeeds.c): Convert image-based markers to graph-based markers. Optionally, it also performs k-means on the graph markers if a number of feature points per marker > 0 is defined. The markers coordinates must be in "*-seeds.txt" files. 
+- [iftGFLIMConvertSeeds](iftGFLIMConvertSeeds.c): Convert image-based markers to graph-based markers. Optionally, it also performs k-means on the graph markers if a number of feature points per marker > 0 is defined. The markers coordinates must be in "*-seeds.txt" files.
 - [iftGFLIMConvertSeeds_v2](GFLIM-BoFP/iftGFLIMConvertSeeds_v2.c): Convert image-based markers to graph-based markers, performs a k-means per graph marker, and another k-means per label. The markers coordinates must be in "*-seeds.txt" files. This program is only used for GFLIM-BoFP.
 
 ### Training
@@ -49,11 +49,10 @@ The executable files will be created at LibIFT/bin
 
 - [iftGFLIMExtract](iftGFLIMExtract.c): Extract features from a set of images and decode from a GFLIM or a GFLIM-BoFP trained model.
 
-
 ## Python scripts
 
-The following files automate the training and inference of a model. 
+The following files automate the training and inference of a model.
 
 - [GFLIM-train](GFLIM/GFLIM-train.py): Train a GFLIM model and decode the features of each layer. It optionally writes the activation images of each layer.
 - [GFLIM-BoFP-train](GFLIM-BoFP/GFLIM-BoFP-train.py): Train a GFLIM-BoFP model and decode the features of each layer. It optionally writes the activation images of each layer.
-- [GFLIM-extract](GFLIM-extract.py): Extract features from a set of images and decode from a GFLIM or a GFLIM-BoFP trained model. 
+- [GFLIM-extract](GFLIM-extract.py): Extract features from a set of images and decode from a GFLIM or a GFLIM-BoFP trained model.

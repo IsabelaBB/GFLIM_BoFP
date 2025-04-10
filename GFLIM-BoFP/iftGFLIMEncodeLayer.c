@@ -2,7 +2,7 @@
 
 /**
  * \file iftGFLIMGSEncodeMergedLayer.c
- * \brief Encode the layer using the non-merged kernels, bias, and labels
+ * \brief Encode a layer using the non-merged kernels, bias, and labels created by iftGFLIMCreateLayerModel
  * \warning This function only encode feature from the training graphs.
  */
 
@@ -124,7 +124,7 @@ int main(int argc, char *argv[])
     iftDestroyFileSet(&fs);
     iftDestroyFLIMArch(&arch);
     char *time = iftFormattedTime(iftCompTime(tstart, iftToc()));
-    printf("\nDone ... %s\n", time);
+    printf("Done ... %s\n", time);
     iftFree(time);
     return (0);
 }

@@ -1,5 +1,10 @@
 #include "ift.h"
 
+/**
+ * \file iftGFLIMExtract.c
+ * \brief Extract features from a set of images and decode from a GFLIM or a GFLIM-BoFP trained model.
+ */
+
 void validateArgs(char *images_dir, char *model_dir, iftFLIMArch *arch, int nLayers, 
                   iftFLIMGraphType graph_type, int nsuperpixels, int batchsize, 
                   int argc, char *argv[], int *initial_seeds)
@@ -250,7 +255,7 @@ int main(int argc, char *argv[])
     for (int batch = 0; batch < nbatches; batch++)
     {
         int first = batch * batchsize, last = first + batchsize - 1;
-        printf("Processing batch %d of %d batches\n", batch + 1, nbatches);
+        printf("Processing batch %d of %d batches\r", batch + 1, nbatches);
         fflush(stdout);
 
         ProcessBatch(fs_imgs, first, last, images_dir, model_dir, saliency_dir,
@@ -264,7 +269,7 @@ int main(int argc, char *argv[])
     int first = ngraphs - nremaining_graphs, last = ngraphs - 1;
     if (first <= last)
     {
-        printf("Processing remaining %d images\n", last - first + 1);
+        printf("Processing remaining %d images\r", last - first + 1);
         fflush(stdout);
 
         ProcessBatch(fs_imgs, first, last, images_dir, model_dir, saliency_dir,
@@ -279,7 +284,7 @@ int main(int argc, char *argv[])
     iftDestroyFLIMArch(&arch);
 
     char *time = iftFormattedTime(iftCompTime(tstart, iftToc()));
-    printf("\nDone ... %s\n", time);
+    printf("Done ... %s\n", time);
     iftFree(time);
     return 0;
 }

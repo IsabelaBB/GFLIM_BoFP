@@ -2,6 +2,7 @@ import os
 import shutil
 import json
 import argparse
+import sys
 
 parser = argparse.ArgumentParser(
     prog="GFLIM-BoFP-train",
@@ -84,13 +85,15 @@ def rmdir(path):
 
 def CallFunction(function, args, msg=None):
     if(msg is not None):
-        print(msg)
+        sys.stdout.write(msg)
+        sys.stdout.flush()
     os.system("{} {}".format(function, " ".join([str(i) for i in args])))
     #print("{} {}".format(function, " ".join([str(i) for i in args])))
 
 
 args = parser.parse_args()
-print("Arguments: {}".format(args))
+print("Model directory: {}".format(args.model_dir))
+#print("Arguments: {}".format(args))
 functions = setFunctions(args.path)
 rmdir(args.model_dir)
 verifyArgs(args)
@@ -102,24 +105,22 @@ with open(args.arch_file) as f:
 
 os.makedirs(args.model_dir, exist_ok=True)
 
-CallFunction(functions['CreateGraph'], [args.img_dir, args.final_spx, args.model_dir, args.graph_feat, args.spx_alg, args.init_seeds], 'Create Graphs')
+CallFunction(functions['CreateGraph'], [args.img_dir, args.final_spx, args.model_dir, args.graph_feat, args.spx_alg, args.init_seeds], 'Creating graphs:\t\t')
 
 if(args.reduce_kernels > 0):
-    CallFunction(functions['ConvertSeeds2'], [args.model_dir, args.markers_dir, nfeat_markers, kernel_size, args.reduce_kernels, args.attention, args.aggregation], 'Convert seeds from image to graph and perform a k-means per marker')
+    CallFunction(functions['ConvertSeeds2'], [args.model_dir, args.markers_dir, nfeat_markers, kernel_size, args.reduce_kernels, args.attention, args.aggregation], 'Converting seeds:\t\t')
 else:
-    CallFunction(functions['ConvertSeeds'], [args.model_dir, args.markers_dir, nfeat_markers, kernel_size, args.attention, args.aggregation], 'Convert seeds from image to graph and perform a k-means per marker and a k-means per label')
+    CallFunction(functions['ConvertSeeds'], [args.model_dir, args.markers_dir, nfeat_markers, kernel_size, args.attention, args.aggregation], 'Converting seeds:\t\t')
     
 
 for layer in range(1,args.nlayers+1):
-    print("Layer {}".format(layer))
-
-    CallFunction(functions['CreateLayerModel'], [args.model_dir, args.arch_file, layer, args.stride, args.attention, args.aggregation], "\t Create layer model ")
-    CallFunction(functions['MergeLayerModels'], [args.model_dir, layer], "\t Merge layer models ")
-    CallFunction(functions['EncodeMergedLayer'], [args.model_dir, args.arch_file, layer, args.stride, args.attention, args.aggregation, 1 if args.dropout else 0], "\t Encode merged layer ")
+    CallFunction(functions['CreateLayerModel'], [args.model_dir, args.arch_file, layer, args.stride, args.attention, args.aggregation], "Creating weights layer {}:\t".format(layer))
+    CallFunction(functions['MergeLayerModels'], [args.model_dir, layer], "Merging weights layer {}:\t".format(layer))
+    CallFunction(functions['EncodeMergedLayer'], [args.model_dir, args.arch_file, layer, args.stride, args.attention, args.aggregation, 1 if args.dropout else 0], "Encoding layer {}:\t\t".format(layer))
 
     if(args.activation):
-        CallFunction(functions['WriteActivations'], [args.model_dir, layer], "\t Write activations ")
-    CallFunction(functions['DecodeLayer'], [args.model_dir, layer, args.arch_file, args.decoder, args.stride], "\t Decode layer ")
+        CallFunction(functions['WriteActivations'], [args.model_dir, layer], "Writing activations layer {}:\t".format(layer))
+    CallFunction(functions['DecodeLayer'], [args.model_dir, layer, args.arch_file, args.decoder, args.stride], "Decoding layer {}:\t\t".format(layer))
 
 for layer in range(0,args.nlayers+1):
     line = "{}/layer{}".format(args.model_dir, layer)

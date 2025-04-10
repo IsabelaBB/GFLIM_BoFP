@@ -71,7 +71,7 @@ int main(int argc, char *argv[])
     for (int i = 0; i < fs_imgs->n; i++)
     {
         char *basename = NULL;
-        char filename[200], ext[10];
+        char filename[512], ext[10];
 
         sprintf(ext, "%s", iftFileExt(fs_imgs->files[i]->path));
         basename = iftFilename(fs_imgs->files[i]->path, ext);
@@ -96,7 +96,7 @@ int main(int argc, char *argv[])
     iftDestroyFileSet(&fs_imgs);
 
     char *time = iftFormattedTime(iftCompTime(tstart, iftToc()));
-    printf("\nDone ... %s\n", time);
+    printf("Done ... %s\n", time);
     iftFree(time);
     return 0;
 }

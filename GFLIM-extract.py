@@ -1,6 +1,7 @@
 import os
 import shutil
 import argparse
+import sys
 
 parser = argparse.ArgumentParser(
     prog="GFLIM-extract",
@@ -31,7 +32,7 @@ parser.add_argument("-dropout", "--dropout", help=" ", action="store_true")
 parser.add_argument("-path", "--path", help=" ", type=str, default="../bin")
 
 
-def verifyArgs(path):
+def verifyArgs(args):
     if(os.path.exists(args.path) == False):
         print("Path to exec files does not exist")
         exit()
@@ -64,8 +65,10 @@ def verifyArgs(path):
             print("Final superpixels must be smaller than initial seeds")
             exit()
 
+
 args = parser.parse_args()
-print("Arguments: {}".format(args))
+print("Model directory: {}".format(args.model_dir))
+#print("Arguments: {}".format(args))
 verifyArgs(args)
 
 vals = [args.img_dir, args.model_dir, args.arch_file, args.nlayers, args.graph_feat, args.spx_alg, args.final_spx, args.decoder, args.batch_size, args.stride, args.attention, args.aggregation, 1 if args.dropout else 0, args.init_seeds]

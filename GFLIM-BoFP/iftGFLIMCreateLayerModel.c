@@ -2,9 +2,9 @@
 
 /**
  * \file iftGFLIMCreateLayerModel.c
- * \brief Create the model for a given layer of the GFLIM network.
- * \note The kernels, biases, and true labels are saved in the model directory per training image. 
- * To merge them use iftGFLIMMergeLayerModel.
+ * \brief Create the model for a given layer using GFLIM-BoFP.
+ * It creates kernels, biases, and true labels per training image.
+ * \note The kernels, biases, and true labels are saved in the model directory per training image. To merge them use iftGFLIMMergeLayerModel.
  */
 
 int main(int argc, char *argv[])
@@ -113,7 +113,7 @@ int main(int argc, char *argv[])
     iftFree(filename);
 
     char *time = iftFormattedTime(iftCompTime(tstart, iftToc()));
-    printf("\nDone ... %s\n", time);
+    printf("Done ... %s\n", time);
     iftFree(time);
     return (0);
 }

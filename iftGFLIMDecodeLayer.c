@@ -1,7 +1,7 @@
 #include "ift.h"
 
 /**
- * @brief Decode a layer of a GFLIM model.
+ * @brief Decode a layer of a GFLIM or GFLIM-BoFP model.
  */
 
 void validateArgs(int layer, char *model_dir, iftGFLIMDecoderType decoder, iftGFLIMStrideType stride_type, 
@@ -141,8 +141,7 @@ int main(int argc, char *argv[])
         iftFree(truelabels);
 
         /* post-process and save the salience maps */
-        if(decoder == IFT_GFLIM_GRAPHADAPTIVE_DECODER) nlabels--;
-        for (int l = 0; l < nlabels; l++)
+        for (int l = 0; l < saliency->n; l++)
         {
             sprintf(sal_dir, "%s/label%d", output_dir, l + 1);
             if (!iftDirExists(sal_dir))
@@ -166,7 +165,7 @@ int main(int argc, char *argv[])
     iftDestroyFileSet(&fs);
     iftDestroyFLIMArch(&arch);
     char *time = iftFormattedTime(iftCompTime(tstart, iftToc()));
-    printf("\nDone ... %s\n", time);
+    printf("Done ... %s\n", time);
     iftFree(time);
     return (0);
 }

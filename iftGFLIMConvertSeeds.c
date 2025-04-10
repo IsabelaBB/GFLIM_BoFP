@@ -1,7 +1,8 @@
 /**
  * \file iftGFLIMConvertSeeds.c
- * \brief Convert image markers to graph markers. 
- * It also performs k-means on the graph markers if a number of feature points per marker > 0 is defined.
+ * \brief Convert image-based markers to graph-based markers. 
+ * Optionally, it also performs k-means on the graph markers if a number of feature points per marker > 0 is defined. 
+ * \warning The markers coordinates must be in "*-seeds.txt" files.
  */
 
 #include "ift.h"
@@ -104,7 +105,7 @@ int main(int argc, char *argv[]) {
           sprintf(filename, "%s/%s.json", graph_dir, basename);
           if(!iftFileExists(filename)) iftError("Graph file %s does not exist", __func__, filename);
           iftFLIMGraph *graph = iftReadFLIMGraph(filename);
-
+          
           // perform a k-means per marker and reduce the number of seeds
           iftLabeledSet *T = iftGFLIMSelectClusterCenters(graph, graph_seeds, kernel_size, nfpts_per_marker, attention_opt, dimReduction, ncomponents, aggregation_opt);
           iftDestroyLabeledSet(&graph_seeds);
@@ -124,7 +125,7 @@ int main(int argc, char *argv[]) {
     iftDestroyFileSet(&fs);
 
     char *time = iftFormattedTime(iftCompTime(tstart, iftToc()));
-    printf("\nDone ... %s\n", time);
+    printf("Done ... %s\n", time);
     iftFree(time);
     return (0);
 }

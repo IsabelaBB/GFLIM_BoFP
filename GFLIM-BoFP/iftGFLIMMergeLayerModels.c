@@ -2,7 +2,7 @@
 
 /**
  * \file iftGFLIMMergeLayerModels.c
- * \brief Merge the kernels, bias, and labels of a layer
+ * \brief Merge the kernels, bias, and labels of a layer created by iftGFLIMCreateLayerModel.
  */
 
 int main(int argc, char *argv[])
@@ -112,7 +112,7 @@ int main(int argc, char *argv[])
     iftDestroyFileSet(&fs);
 
     char *time = iftFormattedTime(iftCompTime(tstart, iftToc()));
-    printf("\nDone ... %s\n", time);
+    printf("Done ... %s\n", time);
     iftFree(time);
     return (0);
 }

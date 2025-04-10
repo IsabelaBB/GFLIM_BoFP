@@ -1,5 +1,12 @@
 #include "ift.h"
 
+/**
+ * \file iftGFLIMTrainLayer.c
+ * \brief Train a layer model using GFLIM.
+ * It performs marker-based normalization on the graph-based markers, 
+ * compute the kernel bank and apply convolution to extract features from the training graphs.
+ */
+
 int main(int argc, char *argv[])
 {
     timer *tstart;
@@ -86,7 +93,7 @@ int main(int argc, char *argv[])
     iftDestroyFLIMArch(&save_arch);
 
     char *time = iftFormattedTime(iftCompTime(tstart, iftToc()));
-    printf("\nDone ... %s\n", time);
+    printf("Done ... %s\n", time);
     iftFree(time);
     return (0);
 }

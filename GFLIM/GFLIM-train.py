@@ -1,6 +1,7 @@
 import os
 import shutil
 import argparse
+import sys
 
 parser = argparse.ArgumentParser(
     prog="GFLIM-train",
@@ -71,27 +72,29 @@ def rmdir(path):
  
 def CallFunction(function, args, msg=None):
     if(msg is not None):
-        print(msg)
+        sys.stdout.write(msg+':\t\t')
+        sys.stdout.flush()
     os.system("{} {}".format(function, " ".join([str(i) for i in args])))
     #print("{} {}".format(function, " ".join([str(i) for i in args])))
 
 
 args = parser.parse_args()
-print("Arguments: {}".format(args))
+print("Model directory: {}".format(args.model_dir))
+#print("Arguments: {}".format(args))
 functions = setFunctions(args.path)
 rmdir(args.model_dir)
 verifyArgs(args)
 
 os.makedirs(args.model_dir, exist_ok=True)
 
-CallFunction(functions['CreateGraph'], [args.img_dir, args.final_spx, args.model_dir, args.graph_feat, args.spx_alg, args.init_seeds], 'Create the graphs')
-CallFunction(functions['ConvertSeeds'], [args.model_dir, args.markers_dir, -1], 'Convert seeds from image to graph')
+CallFunction(functions['CreateGraph'], [args.img_dir, args.final_spx, args.model_dir, args.graph_feat, args.spx_alg, args.init_seeds], 'Creating graphs')
+CallFunction(functions['ConvertSeeds'], [args.model_dir, args.markers_dir, -1], 'Converting seeds')
 
 for layer in range(1,args.nlayers+1):
-    CallFunction(functions['TrainLayer'], [args.model_dir, args.arch_file, layer], 'Train layer {}'.format(layer))
+    CallFunction(functions['TrainLayer'], [args.model_dir, args.arch_file, layer], 'Training layer {}'.format(layer))
     if(args.activation):
-        CallFunction(functions['WriteActivations'], [args.model_dir, layer], "\t Write activations ")
-    CallFunction(functions['DecodeLayer'], [args.model_dir, layer, args.arch_file, 'tristate', 'none'], 'Decode layer {}'.format(layer))
+        CallFunction(functions['WriteActivations'], [args.model_dir, layer], 'Writing activations for layer {}'.format(layer))
+    CallFunction(functions['DecodeLayer'], [args.model_dir, layer, args.arch_file, 'tristate', 'none'], 'Decoding layer {}'.format(layer))
 
 for layer in range(1,args.nlayers+1):
     line = "{}/layer{}".format(args.model_dir, layer-1)

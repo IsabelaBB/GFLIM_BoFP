@@ -161,7 +161,7 @@ int main(int argc, char *argv[])
     iftDestroyFileSet(&fs);
     iftDestroyFLIMArch(&arch);
     char *time = iftFormattedTime(iftCompTime(tstart, iftToc()));
-    printf("\nDone ... %s\n", time);
+    printf("Done ... %s\n", time);
     iftFree(time);
     return (0);
 }

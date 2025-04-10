@@ -2,7 +2,7 @@
 
 /**
  * \file iftGFLIMWriteActivations.c
- * \brief Write the activations of a GFLIM of GFLIM-BoFP network layer
+ * \brief Write the activations of a GFLIM or a GFLIM-BoFP layer
  */
 
 /*iftDataSet **ReadPCAMatrixAndClasses(char *model_dir, int *nclasses)
@@ -275,7 +275,7 @@ int main(int argc, char *argv[])
         iftFree(truelabels);
 
     char *time = iftFormattedTime(iftCompTime(tstart, iftToc()));
-    printf("\nDone ... %s\n", time);
+    printf("Done ... %s\n", time);
     iftFree(time);
     return (0);
 }

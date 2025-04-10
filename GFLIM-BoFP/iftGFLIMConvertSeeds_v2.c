@@ -1,7 +1,7 @@
 /**
  * \file iftReduceSeedSet_v2.c
- * \brief Reduce the number of seeds in a GFLIM graph using a kmeans per marker and a k-means per label.
- * \note The number of seeds per marker is defined in the architecture file and the number of seeds per label is defined by the user.
+ * \brief Convert image-based markers to graph-based markers, performs a k-means per graph marker, and another k-means per label. 
+ * \warning The markers coordinates must be in "*-seeds.txt" files.
  */
 
 #include "ift.h"
@@ -255,7 +255,7 @@ int main(int argc, char *argv[]) {
     iftDestroyFileSet(&fs);
 
     char *time = iftFormattedTime(iftCompTime(tstart, iftToc()));
-    printf("\nDone ... %s\n", time);
+    printf("Done ... %s\n", time);
     iftFree(time);
     return (0);
 }

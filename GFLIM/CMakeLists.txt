@@ -1,0 +1,3 @@
+add_executable(iftGFLIMTrainLayer iftGFLIMTrainLayer.c)
+target_link_libraries(iftGFLIMTrainLayer ift)
+

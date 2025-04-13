@@ -90,7 +90,7 @@ int main(int argc, char *argv[])
         char **basename = (char **)calloc(last - first + 1, sizeof(char *));
 
         /* read graphs */
-        iftFLIMGraphArray *input_graph = iftFLIMGraphCreateEmptyFLIMGraphArray(last - first + 1);
+        iftFLIMGraphArray *input_graph = iftCreateEmptyFLIMGraphArray(last - first + 1);
         iftImageArray *label_imgs = iftCreateImageArray(last - first + 1);
         for (int j = 0; j < (last - first + 1); j++)
         {
@@ -125,7 +125,7 @@ int main(int argc, char *argv[])
     {
         char **basename = (char **)calloc(last - first + 1, sizeof(char *));
         /* read graphs */
-        iftFLIMGraphArray *input_graph = iftFLIMGraphCreateEmptyFLIMGraphArray(last - first + 1);
+        iftFLIMGraphArray *input_graph = iftCreateEmptyFLIMGraphArray(last - first + 1);
         iftImageArray *label_imgs = iftCreateImageArray(last - first + 1);
         for (int j = 0; j < (last - first + 1); j++)
         {

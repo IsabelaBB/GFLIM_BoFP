@@ -105,9 +105,15 @@ iftLabeledSet **iftGFLIMSelectClusterCenters_allGraphs(iftDataSet **Z,
 #endif
 
   iftLabeledSet **T = iftAlloc(ngraphs, sizeof(iftLabeledSet *));
+
+  int nclasses = Z[0]->nclasses;
+  for (int i = 0; i < ngraphs; i++)
+  {
+    nclasses = iftMax(nclasses, Z[i]->nclasses);
+  }
   
   /* Perform a k-means per label */
-  for (int c = 0; c <= 1; c++)
+  for (int c = 0; c <= nclasses; c++)
   {
     // count the number of seeds with label c
     int nsamples = 0;

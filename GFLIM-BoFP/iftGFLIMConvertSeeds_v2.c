@@ -45,7 +45,7 @@ iftDataSet *iftGFLIMSelectClusterCenters_perGraph(iftFLIMGraph *graph,
 
   // extract neighbor information and compute the iftDataSet
   iftDataSet *Z = iftGFLIMExtractMarkerDataSet(graph, S, kernel_size, attention_opt, aggregation_opt);
-  iftDataSet *Z_out = iftCreateDataSet(Z->nclasses*nclusters_per_marker, Z->nfeats); // assumes that the number of kernels is the same for foreground and background
+  iftDataSet *Z_out = iftCreateDataSet(iftMin(Z->nsamples, Z->nclasses*nclusters_per_marker), Z->nfeats); // assumes that the number of kernels is the same for foreground and background
 
   int k = 0; // index for the output dataset
   int max_class = 0; // get the number of classes for the output dataset
@@ -74,6 +74,7 @@ iftDataSet *iftGFLIMSelectClusterCenters_perGraph(iftFLIMGraph *graph,
     iftDestroyDataSet(&Z1);
   }
   Z_out->nclasses = max_class;
+  Z_out->nsamples = k;
   iftDestroyDataSet(&Z);
   return Z_out;
 }

@@ -25,7 +25,7 @@ parser.add_argument("spx_alg", help="Superpixel algorithm.", type=str, choices=[
 parser.add_argument("decoder", help="Decoder type.", type=str, choices=["tristate", "hybrid", "graph-adaptive", "gaussian", "test"])
 parser.add_argument("attention", help="Attention option.", type=str, choices=["NONE", "NODE_RELSIZE", "NODE_SIZE", "NEIGHB_SIMIL", "COSINE_SIMILARITY", #"NEIGHB_SIZE", 
                                                                                 "CLASS_DOMINANCE_TEST", "CLASS_DOMINANCE", 
-                                                                                "CLASS_DOMINANCE_WINNER_POWER2", "CLASS_DOMINANCE_SOFTMAX_NEIGHB"])
+                                                                                "CLASS_DOMINANCE_POWER2", "CLASS_DOMINANCE_SOFTMAX_NEIGHB"])
 parser.add_argument("aggregation", help="Aggregation option.", type=str, choices=["CONCAT", "MEAN", "WMEAN"])
 parser.add_argument("-init_seeds", "--init_seeds", help="Initial number of seeds in DISF. Required only if spx_alg is DISF", type=int, default=0)
 parser.add_argument("-act", "--activation", help="Write activations", action="store_true")
@@ -87,23 +87,27 @@ def CallFunction(function, args, msg=None):
     if(msg is not None):
         sys.stdout.write(msg)
         sys.stdout.flush()
-    os.system("{} {}".format(function, " ".join([str(i) for i in args])))
-    #print("{} {}".format(function, " ".join([str(i) for i in args])))
+    #os.system("{} {}".format(function, " ".join([str(i) for i in args])))
+    print("{} {}".format(function, " ".join([str(i) for i in args])))
 
 
 args = parser.parse_args()
 print("Model directory: {}".format(args.model_dir))
 #print("Arguments: {}".format(args))
 functions = setFunctions(args.path)
-rmdir(args.model_dir)
+#rmdir(args.model_dir)
 verifyArgs(args)
+
 
 with open(args.arch_file) as f:
     data = json.load(f)
     kernel_size = data['layer1']['conv']['kernel_size'][0]*data['layer1']['conv']['kernel_size'][1]
     nfeat_markers = data['layer1']['conv']["nkernels_per_marker"]
 
+
 os.makedirs(args.model_dir, exist_ok=True)
+os.makedirs("{}/model".format(args.model_dir), exist_ok=True)
+shutil.copyfile(args.arch_file, "{}/model/arch.json".format(args.model_dir))
 
 CallFunction(functions['CreateGraph'], [args.img_dir, args.final_spx, args.model_dir, args.graph_feat, args.spx_alg, args.init_seeds], 'Creating graphs:\t\t')
 
@@ -111,20 +115,26 @@ if(args.reduce_kernels > 0):
     CallFunction(functions['ConvertSeeds2'], [args.model_dir, args.markers_dir, nfeat_markers, kernel_size, args.reduce_kernels, args.attention, args.aggregation], 'Converting seeds:\t\t')
 else:
     CallFunction(functions['ConvertSeeds'], [args.model_dir, args.markers_dir, nfeat_markers, kernel_size, args.attention, args.aggregation], 'Converting seeds:\t\t')
-    
 
 for layer in range(1,args.nlayers+1):
     CallFunction(functions['CreateLayerModel'], [args.model_dir, args.arch_file, layer, args.stride, args.attention, args.aggregation], "Creating weights layer {}:\t".format(layer))
+    
+    if(args.activation):
+        CallFunction(functions['EncodeLayer'], [args.model_dir, args.arch_file, layer, args.stride, args.attention, args.aggregation], "Encoding non merger layer {}:\t\t".format(layer))
+        CallFunction(functions['WriteActivations'], [args.model_dir, layer], "Writing activations layer {}:\t".format(layer))
+        #os.rename("{}/activation{}".format(args.model_dir, layer), "{}/activation_noMerge{}".format(args.model_dir, layer))
+
     CallFunction(functions['MergeLayerModels'], [args.model_dir, layer], "Merging weights layer {}:\t".format(layer))
+    #CallFunction(functions['EncodeMergedLayer'], [args.model_dir, args.arch_file, layer, args.stride, args.attention if layer == 1 else "NONE", args.aggregation, 1 if args.dropout and layer == 1 else 0], "Encoding layer {}:\t\t".format(layer))
     CallFunction(functions['EncodeMergedLayer'], [args.model_dir, args.arch_file, layer, args.stride, args.attention, args.aggregation, 1 if args.dropout else 0], "Encoding layer {}:\t\t".format(layer))
 
     if(args.activation):
         CallFunction(functions['WriteActivations'], [args.model_dir, layer], "Writing activations layer {}:\t".format(layer))
     CallFunction(functions['DecodeLayer'], [args.model_dir, layer, args.arch_file, args.decoder, args.stride], "Decoding layer {}:\t\t".format(layer))
 
-for layer in range(0,args.nlayers+1):
-    line = "{}/layer{}".format(args.model_dir, layer)
-    rmdir(line)
-    line = "{}/labels{}".format(args.model_dir, layer)
-    rmdir(line)
+#for layer in range(0,args.nlayers+1):
+#    line = "{}/layer{}".format(args.model_dir, layer)
+#    rmdir(line)
+#    line = "{}/labels{}".format(args.model_dir, layer)
+#    rmdir(line)
 

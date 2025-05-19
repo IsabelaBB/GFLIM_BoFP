@@ -22,7 +22,7 @@ parser.add_argument("graph_feat", help="Graph feature (see iftGFLIMGraph.h for m
 parser.add_argument("spx_alg", help="Superpixel algorithm.", type=str, choices=["DISF", "ERGC"])
 parser.add_argument("decoder", help="Decoder type.", type=str, choices=["tristate", "hybrid", "graph-adaptive", "gaussian"])
 parser.add_argument("attention", help="Attention option.", type=str, choices=["NONE", "NODE_RELSIZE", "NODE_SIZE", "NEIGHB_SIMIL", "NEIGHB_SIZE", 
-                                                                                "CLASS_DOMINANCE", "CLASS_DOMINANCE_WINNER", "CLASS_DOMINANCE_WINNER_POWER2", "CLASS_DOMINANCE_SOFTMAX_NEIGHB",
+                                                                                "CLASS_DOMINANCE", "CLASS_DOMINANCE_WINNER", "CLASS_DOMINANCE_POWER2", "CLASS_DOMINANCE_SOFTMAX_NEIGHB",
                                                                                 "COSINE_SIMILARITY"])
 parser.add_argument("batch_size", help="Batch size (<1 for automatic size)", type=int)
 parser.add_argument("aggregation", help="Aggregation option.", type=str, choices=["CONCAT", "MEAN", "WMEAN"])

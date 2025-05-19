@@ -137,7 +137,9 @@ int main(int argc, char *argv[])
     }
     else
     {
-        sprintf(filename, "%s/model/conv%d-bias.txt", model_dir, layer);
+        char *basename = iftFilename(fs->files[0]->path, ".json");
+        sprintf(filename, "%s/model/%s-conv%d-bias.txt", model_dir, basename, layer);
+        free(basename);
         if (iftFileExists(filename))                                         // is there a bias?
             sprintf(output_dir, "%s/activationNoMerge%d", model_dir, layer); // non merged layer in GFLIM-BoFP
         else                                                                 // GFLIM
@@ -146,6 +148,8 @@ int main(int argc, char *argv[])
             sprintf(output_dir, "%s/activation%d", model_dir, layer);
         }
     }
+
+    printf("Merged: %d \n", merged_model);
 
     iftMakeDir(output_dir);
     /*} else { // not using it
@@ -179,6 +183,7 @@ int main(int argc, char *argv[])
     for (int i = 0; i < fs->n; i++)
     {
         char *basename = iftFilename(fs->files[i]->path, ".json");
+        printf("Writing activation for image %s \n", basename);
 
         // read the graph and the superpixels image
         iftFLIMGraph *graph = iftReadFLIMGraph(fs->files[i]->path);

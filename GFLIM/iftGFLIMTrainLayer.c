@@ -64,11 +64,11 @@ int main(int argc, char *argv[])
         }
     }
 
-    iftFLIMArch *save_arch = (iftFLIMArch *)calloc(1, sizeof(iftFLIMArch));
+    iftFLIMArch *save_arch = (iftFLIMArch *)iftAlloc(1, sizeof(iftFLIMArch));
     save_arch->nlayers = 1;
     save_arch->stdev_factor = arch->stdev_factor;
     save_arch->apply_intrinsic_atrous = arch->apply_intrinsic_atrous;
-    save_arch->layer = (iftFLIMLayer *)calloc(1, sizeof(iftFLIMLayer));
+    save_arch->layer = (iftFLIMLayer *)iftAlloc(1, sizeof(iftFLIMLayer));
 
     for (int i = 0; i < 3; i++)
     {
@@ -81,7 +81,7 @@ int main(int argc, char *argv[])
     save_arch->layer[0].noutput_channels = arch->layer[layer - 1].noutput_channels;
     save_arch->layer[0].relu = arch->layer[layer - 1].relu;
     
-    save_arch->layer[0].pool_type = (char *)malloc((strlen(arch->layer[layer - 1].pool_type) + 1) * sizeof(char));
+    save_arch->layer[0].pool_type = iftAllocCharArray(strlen(arch->layer[layer - 1].pool_type) + 1);
     strcpy(save_arch->layer[0].pool_type, arch->layer[layer - 1].pool_type);
     save_arch->layer[0].pool_stride = arch->layer[layer - 1].pool_stride;
     iftDestroyFLIMArch(&arch);

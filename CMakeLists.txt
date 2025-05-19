@@ -15,3 +15,4 @@ target_link_libraries(iftGFLIMWriteActivations ift)
 
 add_subdirectory(GFLIM)
 add_subdirectory(GFLIM-BoFP)
+add_subdirectory(GFLIM-BoFP-U)

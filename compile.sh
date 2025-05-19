@@ -10,3 +10,6 @@ cd ..
 cd GFLIM-BoFP
 bash compile.sh $1
 cd ..
+cd GFLIM-BoFP-U
+bash compile.sh $1
+cd ..

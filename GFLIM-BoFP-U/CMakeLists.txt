@@ -1,0 +1,10 @@
+add_executable(iftGFLIMCreateLayerModelUDecoder iftGFLIMCreateLayerModelUDecoder.c)
+target_link_libraries(iftGFLIMCreateLayerModelUDecoder ift)
+
+add_executable(iftGFLIMDecodeUMergedLayer iftGFLIMDecodeUMergedLayer.c)
+target_link_libraries(iftGFLIMDecodeUMergedLayer ift)
+
+add_executable(iftGFLIMEncodeUMergedLayer iftGFLIMEncodeUMergedLayer.c)
+target_link_libraries(iftGFLIMEncodeUMergedLayer ift)
+
+

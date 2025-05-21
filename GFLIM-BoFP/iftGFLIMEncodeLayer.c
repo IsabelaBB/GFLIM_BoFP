@@ -51,27 +51,38 @@ int main(int argc, char *argv[])
         sprintf(out_labels_dir, "%s/labels%d", model_dir, layer);
         iftMakeDir(out_labels_dir);
     }
+
+    sprintf(filename, "%s/markers", model_dir);
+    if (!iftDirExists(filename))
+        iftError("Markers directory does not exist", "main");
     
     sprintf(output_dir, "%s/layer%d", model_dir, layer);
     iftMakeDir(output_dir);
 
-    iftFileSet *fs = iftLoadFileSetFromDirBySuffix(input_dir, ".json", 1);
+    iftFileSet *fs = iftLoadFileSetFromDirBySuffix(filename, "-seeds_graph.txt", 1);
 
     /* Encode layer */
     for (int i = 0; i < fs->n; i++)
     {
-        char *basename = iftFilename(fs->files[i]->path, ".json");
+        char *basename = iftFilename(fs->files[i]->path, "-seeds_graph.txt");
+
+        // read the graph and kernels
+        sprintf(filename, "%s/%s.json", input_dir, basename);
+        if (!iftFileExists(filename)){
+            iftWarning("File %s does not exist", "main", filename);
+            iftFree(basename);
+            continue;
+        }
+        iftFLIMGraph *graph = iftReadFLIMGraph(filename);
 
         // check if there are kernels created from the graph
         sprintf(filename, "%s/model/%s-conv%d-kernels.npy", model_dir, basename, layer);
         if (!iftFileExists(filename)){
             iftWarning("File %s does not exist", "main", filename);
             iftFree(basename);
+            iftDestroyFLIMGraph(&graph);
             continue;
         }
-
-        // read the graph and kernels
-        iftFLIMGraph *graph = iftReadFLIMGraph(fs->files[i]->path);
         iftMatrix *K = iftReadMatrix(filename);
 
         // read the bias

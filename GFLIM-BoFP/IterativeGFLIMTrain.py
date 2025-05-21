@@ -132,12 +132,12 @@ class GFLIMModel:
         self.encodeLayer(layer)
 
     def setupDirectories(self):
-        if stride == "image-based":
+        if self.stride == "image-based":
             stride_name = "imageStride"
-        elif stride == "graph-based":
+        elif self.stride == "graph-based":
             stride_name = "graphStride"
         else:
-            stride_name = stride
+            stride_name = self.stride
 
         aggregation_name = ""
         if aggregation != "CONCAT":

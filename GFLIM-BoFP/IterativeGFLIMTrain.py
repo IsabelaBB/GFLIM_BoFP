@@ -5,8 +5,13 @@ import argparse
 import sys
 import tkinter as tk
 import tkinter.ttk as ttk
+import ttkbootstrap as tb
+from ttkbootstrap.tooltip import ToolTip
+from ttkbootstrap.validation import add_numeric_validation
+from ttkbootstrap.dialogs import Messagebox
+from ttkbootstrap.toast import ToastNotification
 import tkinter.filedialog
-import tkinter.messagebox
+#import tkinter.messagebox
 import numpy as np
 from PIL import Image, ImageTk
 
@@ -23,6 +28,21 @@ def CallFunction(function, args, msg=None):
     print("{} {}".format(function, " ".join([str(i) for i in args])))
     os.system("{} {}".format(function, " ".join([str(i) for i in args])))
 
+def disableChildren(parent):
+    for child in parent.winfo_children():
+        wtype = child.winfo_class()
+        if wtype not in ('Frame','Labelframe','TFrame','TLabelframe', 'TPanedwindow', 'TNotebook', 'TScrollbar', 'TProgressbar'):
+            child.configure(state='disable')
+        else:
+            disableChildren(child)
+
+def enableChildren(parent):
+    for child in parent.winfo_children():
+        wtype = child.winfo_class()
+        if wtype not in ('Frame','Labelframe','TFrame','TLabelframe', 'TPanedwindow', 'TNotebook', 'TScrollbar', 'TProgressbar'):
+            child.configure(state='normal')
+        else:
+            enableChildren(child)
 
 class GFLIMModel:
     def __init__(self, dataset_name, markers_name, arch_file, split, img_set,
@@ -57,7 +77,7 @@ class GFLIMModel:
         self.superpixel_alg = superpixel_alg
         self.init_seeds = init_seeds
         
-        self.readytoRun = False
+        self.readytoRun = "false"
         self.setupDirectories()
     
     def trainLayer(self, layer, img_set, markers_dir):
@@ -87,8 +107,8 @@ class GFLIMModel:
     def trainLayer_noMerge(self, layer, img_set, markers_dir):
         print("called trainLayer_noMerge with args: ", [layer, img_set, markers_dir])
 
-        if self.readytoRun == False:
-            tkinter.messagebox.showerror("Error", "Model not configured / invalid. Please set the model configuration.")
+        if self.readytoRun != "":
+            Messagebox.show_error("Model not configured / invalid. Please set the model configuration.")
             return
 
         if(layer == 1):
@@ -150,18 +170,22 @@ class GFLIMModel:
             self.dataset_name, self.split, stride_name, self.superpixel_alg, self.init_seeds, self.nsuperpixels, aggregation_name, self.graph_feats, self.attention)
         self.model_img_markers_dir = "{}/markers_img/".format(self.model_dir)
 
-        self.readytoRun = True
-        if os.path.exists(self.orig_img_markers_dir) == False:
-            tkinter.messagebox.showerror("Error", "Markers directory does not exist: {}".format(self.orig_img_markers_dir))
-            self.readytoRun = False
-        if os.path.exists(self.img_dir) == False:
-            tkinter.messagebox.showerror("Error", "Image directory does not exist: {}".format(self.img_dir))
-            self.readytoRun = False
-        if os.path.isfile(self.arch_file) == False:
-            tkinter.messagebox.showerror("Error", "Arch file does not exist: {}".format(self.arch_file))
-            self.readytoRun = False
+        self.readytoRun = self.validateModel()
 
-            
+    def validateModel(self):
+        if os.path.exists(self.orig_img_markers_dir) == False:
+            return "Markers directory does not exist: {}".format(self.orig_img_markers_dir)
+        if os.path.exists(self.img_dir) == False:
+            return "Image directory does not exist: {}".format(self.img_dir)
+        if os.path.isfile(self.arch_file) == False:
+            return "Arch file does not exist: {}".format(self.arch_file)
+        if int(self.nsuperpixels) < 0:
+            return "Number of superpixels must be greater than 0"
+        if int(self.init_seeds) < 0:
+            return "Number of initial seeds must be greater than 0"
+        if int(self.nsuperpixels) > int(self.init_seeds):
+            return "Number of superpixels must be smaller than number of initial seeds"
+        return ""
 
     # basic calls
     def createGraphs(self):
@@ -235,139 +259,98 @@ class ConfigModel(tk.Toplevel):
         self.fn = fn_callback
 
     def create_widgets(self):
-        main_frame = ttk.Frame(self.root)
-        main_frame.pack(fill=tk.BOTH, expand=True)
 
-        frame = tk.Frame(main_frame)
-        frame.pack(padx=5, pady=5)
-        label = tk.Label(frame, text="Dataset name")
-        label.pack(side=tk.LEFT)
-        self.dataset_entry = tk.Entry(frame)
-        self.dataset_entry.pack(side=tk.LEFT)
+        self.root.configure(padx=5, pady=5)
+        for i in range(13):
+            self.root.rowconfigure(i, weight=1)
+        self.root.columnconfigure(0, weight=1)
+        self.root.columnconfigure(1, weight=2)
+        self.root.columnconfigure(2, weight=1)
+
+        def label_widget(label, master, row, column):
+            tb.Label(master, text=label).grid(row=row, column=column, padx=5, pady=5, sticky=tk.E)
+
+        def combobox_widget(master, row, column, textvariable, values):
+            combobox = ttk.Combobox(master, state="readonly", width=10, textvariable=textvariable, values = values)
+            combobox.grid(row=row, column=column, padx=5, pady=5, sticky=tk.EW, columnspan=2)
+            if(textvariable.get() in combobox['values']):
+                combobox.current(combobox['values'].index(textvariable.get()))
+            return combobox
+
+        # dataset name and markers name
+        #frame = tb.Frame(self.root)
+        #frame.grid(row=0, column=0, padx=5, columnspan=2, rowspan=2, sticky=tk.EW)
+
+        label_widget("Dataset name", self.root, 0, 0)
+        self.dataset_entry = tb.Entry(self.root)
+        self.dataset_entry.grid(row=0, column=1, padx=5, pady=5, sticky=tk.EW, columnspan=2)
         self.dataset_entry.insert(0, str(self.dataset_name))
 
-        frame = tk.Frame(main_frame)
-        frame.pack(padx=5, pady=5)
-        label = tk.Label(frame, text="Markers name")
-        label.pack(side=tk.LEFT)
-        self.markers_entry = tk.Entry(frame)
-        self.markers_entry.pack(side=tk.LEFT)
+        label_widget("Markers name", self.root, 1, 0)
+        self.markers_entry = tb.Entry(self.root)
+        self.markers_entry.grid(row=1, column=1, padx=5, pady=5, sticky=tk.EW, columnspan=2)
         self.markers_entry.insert(0, str(self.markers_name))
 
-        frame = tk.Frame(main_frame)
-        frame.pack(padx=5, pady=5)
-        label = tk.Label(frame, text="Arch file")
-        label.pack(side=tk.LEFT)
-        entry = tk.Entry(frame, width=15, textvariable=self.arch_file_var, state=tk.DISABLED, relief=tk.SUNKEN)
+        label_widget("Arch file", self.root, 2, 0)
+        entry = tb.Entry(self.root, width=15, textvariable=self.arch_file_var, state="disabled")
         entry.insert(0, str(self.arch_file_var.get()))
-        entry.pack(side=tk.LEFT)
-        button = tk.Button(frame, text="...", command=self.load_arch_file, width=1, height=1)
-        button.pack(side=tk.LEFT)
+        entry.grid(row=2, column=1, padx=5, pady=5, sticky=tk.EW)
+        self.arch_tooltip = ToolTip(entry, text=entry.get(), bootstyle="info")
+        tb.Button(self.root, text="...", command=self.load_arch_file).grid(row=2, column=2, sticky=tk.E)
 
-        frame = tk.Frame(main_frame)
-        frame.pack(padx=5, pady=5)
-        label = tk.Label(frame, text="Split")
-        label.pack(side=tk.LEFT)
-        self.split_combobox = ttk.Combobox(frame, state="readonly", width=10, textvariable=self.split_var)
-        self.split_combobox['values'] = ["split"+str(l+1) for l in range(5)]
-        self.split_combobox.pack(side=tk.LEFT)
-        if(self.split_var.get() in self.split_combobox['values']):
-            self.split_combobox.current(self.split_combobox['values'].index(self.split_var.get()))
+        label_widget("Split", self.root, 3, 0)
+        self.split_combobox = combobox_widget(self.root, 3, 1, self.split_var, ["split"+str(l+1) for l in range(5)])
 
-        frame = tk.Frame(main_frame)
-        frame.pack(padx=5, pady=5)
-        label = tk.Label(frame, text="Image set")
-        label.pack(side=tk.LEFT)
-        combobox = ttk.Combobox(frame, state="readonly", width=10, textvariable=self.img_set_var, values=["train", "val", "val-train", "test"])
-        combobox.pack(side=tk.LEFT)
-        if(self.img_set_var.get() in combobox['values']):
-            combobox.current(combobox['values'].index(self.img_set_var.get()))
+        label_widget("Image set", self.root, 4, 0)
+        combobox_widget(self.root, 4, 1, self.img_set_var, ["train", "val", "val-train", "test"])
 
-        frame = tk.Frame(main_frame)
-        frame.pack(padx=5, pady=5)
-        label = tk.Label(frame, text="Stride")
-        label.pack(side=tk.LEFT)
-        self.stride_combobox = ttk.Combobox(frame, state="readonly", width=10, textvariable=self.stride_var)
-        self.stride_combobox.pack(side=tk.LEFT)
-        self.stride_combobox['values'] = ["none", "image-based", "graph-based"]
-        if(self.stride_var.get() in self.stride_combobox['values']):
-            self.stride_combobox.current(self.stride_combobox['values'].index(self.stride_var.get()))
+        label_widget("Stride", self.root, 5, 0)
+        combobox_widget(self.root, 5, 1, self.stride_var, ["none", "image-based", "graph-based"])
 
-        frame = tk.Frame(main_frame)
-        frame.pack(padx=5, pady=5)
-        label = tk.Label(frame, text="Attention")
-        label.pack(side=tk.LEFT)
-        self.attention_combobox = ttk.Combobox(frame, state="readonly", width=10, textvariable=self.attention_var)
-        self.attention_combobox.pack(side=tk.LEFT)
-        self.attention_combobox['values'] = ["NONE", "CLASS_DOMINANCE_TEST", "CLASS_DOMINANCE", "CLASS_DOMINANCE_POWER2"]
-        if(self.attention_var.get() in self.attention_combobox['values']):
-            self.attention_combobox.current(self.attention_combobox['values'].index(self.attention_var.get()))
+        label_widget("Attention", self.root, 6, 0)
+        combobox_widget(self.root, 6, 1, self.attention_var, ["NONE", "CLASS_DOMINANCE_TEST", "CLASS_DOMINANCE", "CLASS_DOMINANCE_POWER2"])
+        
+        label_widget("Aggregation", self.root, 7, 0)
+        combobox_widget(self.root, 7, 1, self.aggregation_var, ["CONCAT", "MEAN", "WMEAN"])
 
-        frame = tk.Frame(main_frame)
-        frame.pack(padx=5, pady=5)
-        label = tk.Label(frame, text="Aggregation")
-        label.pack(side=tk.LEFT)
-        self.aggregation_combobox = ttk.Combobox(frame, state="readonly", width=10, textvariable=self.aggregation_var)
-        self.aggregation_combobox.pack(side=tk.LEFT)
-        self.aggregation_combobox['values'] = ["CONCAT", "MEAN", "WMEAN"]
-        if(self.aggregation_var.get() in self.aggregation_combobox['values']):
-            self.aggregation_combobox.current(self.aggregation_combobox['values'].index(self.aggregation_var.get()))
-
-        frame = tk.Frame(main_frame)
-        frame.pack(padx=5, pady=5)
-        label = tk.Label(frame, text="Superpixels")
-        label.pack(side=tk.LEFT)
-        self.nsuperpixels_entry = tk.Entry(frame, width=10)
-        self.nsuperpixels_entry.pack(side=tk.LEFT)
-        self.nsuperpixels_entry.insert(0, str(self.nsuperpixels))
-
-        frame = tk.Frame(main_frame)
-        frame.pack(padx=5, pady=5)
-        label = tk.Label(frame, text="Graph feats")
-        label.pack(side=tk.LEFT)
-        self.graph_feats_combobox = ttk.Combobox(frame, state="readonly", width=10)
-        self.graph_feats_combobox.pack(side=tk.LEFT)
-        self.graph_feats_combobox['values'] = ["SUM", "MEAN", "SUM_MULT_RELSIZE", "MEAN_MULT_RELSIZE",
+        # graph configuration
+        label_widget("Superpixel alg.", self.root, 8, 0)
+        combobox_widget(self.root, 8, 1, self.superpixel_alg_var, ["DISF", "ERGC"])
+        
+        label_widget("Graph feats", self.root, 9, 0)
+        combobox_widget(self.root,9, 1, self.graph_feats_var,
+                                                ["SUM", "MEAN", "SUM_MULT_RELSIZE", "MEAN_MULT_RELSIZE",
                                                 "MEAN_CONCAT_RELSIZE", "MEAN_CONCAT_RELSIZE_NEIGHB", 
                                                 "MEAN_CONCAT_RELSIZE_HARALICK", 
-                                                "SUM_MULT_RELSIZE_CONCAT_HARALICK", "SUM_CONCAT_HARALICK"]
-        if(self.graph_feats_var.get() in self.graph_feats_combobox['values']):
-            self.graph_feats_combobox.current(self.graph_feats_combobox['values'].index(self.graph_feats_var.get()))
+                                                "SUM_MULT_RELSIZE_CONCAT_HARALICK", "SUM_CONCAT_HARALICK"])
 
-        frame = tk.Frame(main_frame)
-        frame.pack(padx=5, pady=5)
-        label = tk.Label(frame, text="Superpixel alg")
-        label.pack(side=tk.LEFT)
-        self.superpixel_alg_combobox = ttk.Combobox(frame, state="readonly", width=10)
-        self.superpixel_alg_combobox.pack(side=tk.LEFT)
-        self.superpixel_alg_combobox['values'] = ["DISF", "ERGC"]
-        if(self.superpixel_alg_var.get() in self.superpixel_alg_combobox['values']):
-            self.superpixel_alg_combobox.current(self.superpixel_alg_combobox['values'].index(self.superpixel_alg_var.get()))
+        label_widget("Superpixels", self.root, 10, 0)
+        self.nsuperpixels_entry = tb.Entry(self.root, width=10)
+        self.nsuperpixels_entry.grid(row=10, column=1, padx=5, pady=5, sticky=tk.EW, columnspan=2)
+        self.nsuperpixels_entry.insert(0, str(self.nsuperpixels))
+        add_numeric_validation(self.nsuperpixels_entry)
 
-        frame = tk.Frame(main_frame)
-        frame.pack(padx=5, pady=5)
-        label = tk.Label(frame, text="Init seeds")
-        label.pack(side=tk.LEFT)
-        self.init_seeds_entry = tk.Entry(frame, width=10)
-        self.init_seeds_entry.pack(side=tk.LEFT)
+        label_widget("Init seeds", self.root, 11, 0)
+        self.init_seeds_entry = tb.Entry(self.root, width=10)
+        self.init_seeds_entry.grid(row=11, column=1, padx=5, pady=5, sticky=tk.EW, columnspan=2)
         self.init_seeds_entry.insert(0, str(self.init_seeds))
+        add_numeric_validation(self.init_seeds_entry)
         
-        button = tk.Button(main_frame, text="Save", command=self.sendData)
-        button.pack(padx=5, pady=10)
+        tb.Button(self.root, text="Save", command=self.sendData).grid(row=12, column=0, padx=10, pady=10, sticky=tk.N, columnspan=3)
 
     def sendData(self):
         dataset_name = self.dataset_entry.get()
         markers_name = self.markers_entry.get()
         arch_file = self.arch_file_var.get()
-        split = self.split_combobox.get()
+        split = self.split_var.get()
         img_set = self.img_set_var.get()
-        stride = self.stride_combobox.get()
-        attention = self.attention_combobox.get()
-        aggregation = self.aggregation_combobox.get()
+        stride = self.stride_var.get()
+        attention = self.attention_var.get()
+        aggregation = self.aggregation_var.get()
         nsuperpixels = int(self.nsuperpixels_entry.get())
-        superpixel_alg = self.superpixel_alg_combobox.get()
+        superpixel_alg = self.superpixel_alg_var.get()
         init_seeds = int(self.init_seeds_entry.get())
-        graph_feats = self.graph_feats_combobox.get()
+        graph_feats = self.graph_feats_var.get()
 
         self.fn(dataset_name, markers_name, arch_file, split, img_set,
                 stride, attention, aggregation, 
@@ -379,6 +362,7 @@ class ConfigModel(tk.Toplevel):
         if arch_file:
             self.arch_file_var.set(arch_file.name)
             print("Arch file loaded: {}".format(arch_file.name))
+            self.arch_tooltip.text = arch_file.name
             with open(arch_file.name) as f:
                 data = json.load(f)
                 self.split_combobox['values'] = ["split"+str(l+1) for l in range(int(data['nlayers']))]
@@ -409,6 +393,30 @@ class IterativeGFLIMTrain:
         self.selected_kernels = []
         self.create_widgets()
 
+        self.kernel_selection_toast = ToastNotification(
+            title="Process finished",
+            message="Kernels selected and model trained",
+            duration=3000,
+        )
+
+        self.train_layer_toast = ToastNotification(
+            title="Process finished",
+            message="Model trained",
+            duration=3000,
+        )
+
+        self.load_model_toast = ToastNotification(
+            title="Process finished",
+            message="Model loaded",
+            duration=3000,
+        )
+
+        self.load_NOmodel_toast = ToastNotification(
+            title="Process finished",
+            message="No model to load",
+            duration=3000,
+        )
+
         self.getModelConfig(dataset_name, markers_name, arch_file, split, img_set,
                             stride, attention, aggregation,
                             nsuperpixels, graph_feats, superpixel_alg, init_seeds)
@@ -418,76 +426,122 @@ class IterativeGFLIMTrain:
         self.main_frame = ttk.Frame(self.root)
         self.main_frame.pack(fill=tk.BOTH, expand=True)
 
-        main_area = tk.PanedWindow(self.main_frame, orient=tk.HORIZONTAL)
-        main_area.pack(fill=tk.BOTH, expand=True)
+        main_area = tb.PanedWindow(self.main_frame, orient=tk.HORIZONTAL)
+        main_area.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
 
         model_config_frame = ttk.LabelFrame(main_area, text="Model Configuration")
         model_config_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=10, pady=10)
         main_area.add(model_config_frame)
 
-        button = tk.Button(model_config_frame, text="Set model configuration", command=self.setModelConfig)
-        button.pack(padx=5, pady=5)
+        buttoms_area = tb.Frame(model_config_frame, width=200)
+        buttoms_area.pack(side=tk.TOP, fill=tk.X, padx=5, pady=5)
 
-        button = tk.Button(model_config_frame, text="Train Layer no merge", command=self.train_layer_no_merge)
-        button.pack(padx=5, pady=5)
+        button = tb.Button(buttoms_area, text="Set model configuration", command=self.setModelConfig)
+        button.pack(padx=5, pady=5, fill=tk.X)
 
-        button = tk.Button(model_config_frame, text="Select kernels", command=self.select_kernels)
-        button.pack(padx=5, pady=5)
+        button = tb.Button(buttoms_area, text="Train Layer no merge", command=self.train_layer_no_merge)
+        button.pack(padx=5, pady=5, fill=tk.X)
 
-        frame = tk.Frame(model_config_frame)
+        button = tb.Button(buttoms_area, text="Select kernels", command=self.select_kernels)
+        button.pack(padx=5, pady=5, fill=tk.X)
+
+        frame = tb.Frame(model_config_frame)
         frame.pack(padx=5, pady=5)
-        label = tk.Label(frame, text="Image name")
-        label.pack(side=tk.LEFT)
+        label = tb.Label(frame, text="Image name")
+        label.pack(side=tk.LEFT, padx=5, pady=5)
         self.train_images_combobox = ttk.Combobox(frame, state="readonly", width=10, textvariable=self.train_img_name)
-        self.train_images_combobox.pack(side=tk.LEFT)
+        self.train_images_combobox.pack(side=tk.LEFT, padx=5, pady=5)
         self.train_images_combobox['values'] = [""]
         
 
-        frame = tk.LabelFrame(model_config_frame, text="Markers")
-        frame.pack(padx=5, pady=5)
+        frame = tb.LabelFrame(model_config_frame, text="Markers")
+        frame.pack(padx=5, pady=5, fill=tk.X)
 
-        button = tk.Radiobutton(frame, text="Original", variable=self.markers_var, value=0)
-        button.pack(side=tk.LEFT)
-        self.model_markers_radiobutton = tk.Radiobutton(frame, text="Reduced", variable=self.markers_var, value=1)
-        self.model_markers_radiobutton.pack(side=tk.LEFT)
+        button = tb.Radiobutton(frame, text="Original", variable=self.markers_var, value=0)
+        button.pack(side=tk.LEFT, padx=5, pady=5)
+        self.model_markers_radiobutton = tb.Radiobutton(frame, text="Reduced", variable=self.markers_var, value=1)
+        self.model_markers_radiobutton.pack(side=tk.LEFT, padx=5, pady=5)
 
-        frame = tk.Frame(model_config_frame)
-        frame.pack(padx=5, pady=5)
-        label = tk.Label(frame, text="Image size")
-        label.pack(side=tk.LEFT)
-        self.image_size_spinbox = tk.Spinbox(frame, from_=200, to=1000, width=5, relief="sunken", 
-                                             repeatdelay=500, repeatinterval=100, increment=50,
-                                             command=self.show_activations)
-        self.image_size_spinbox.pack(side=tk.LEFT)
+        frame = tb.Frame(model_config_frame)
+        frame.pack()
+        label = tb.Label(frame, text="Image size")
+        label.pack(side=tk.LEFT, padx=5, pady=5)
+        self.image_size_spinbox = tb.Spinbox(frame, from_=200, to=1000, width=5, 
+                                             increment=50, command=self.show_activations)
+        self.image_size_spinbox.set(200)
+        self.image_size_spinbox.pack(side=tk.RIGHT, padx=5, pady=5)
 
-        frame = tk.Frame(model_config_frame)
-        frame.pack(padx=5, pady=5)
-        label = tk.Label(frame, text="Images per column")
-        label.pack(side=tk.LEFT)
-        self.ncols_spinbox = tk.Spinbox(frame, from_=1, to=100, width=5, relief="sunken", repeatdelay=500, repeatinterval=100, command=self.show_activations)
-        self.ncols_spinbox.pack(side=tk.LEFT)
+        frame = tb.Frame(model_config_frame)
+        frame.pack()
+        label = tb.Label(frame, text="Images per column")
+        label.pack(side=tk.LEFT, padx=5, pady=5)
+        self.ncols_spinbox = tb.Spinbox(frame, from_=1, to=100, width=5, command=self.show_activations, 
+                                        increment=1)
+        self.ncols_spinbox.set(1)
+        self.ncols_spinbox.pack(side=tk.LEFT, padx=5, pady=5)
 
 
-        self.display_frame = ttk.Notebook(main_area)
+        self.display_frame = tb.Notebook(main_area)
         self.display_frame.pack(side=tk.RIGHT, fill=tk.BOTH, expand=True, padx=10, pady=10)
+        self.display_frame.bind_all("<Button-4>", self._on_mousewheel)
+        self.display_frame.bind_all("<Button-5>", self._on_mousewheel)
         main_area.add(self.display_frame)
 
-        self.progress_bar = ttk.Progressbar(self.main_frame, 
-                                            variable=self.progress_var, 
-                                            mode='determinate', value=0)
+        self.progress_bar = tb.Progressbar(self.main_frame, 
+                                            bootstyle=(tb.SUCCESS, tb.STRIPED),
+                                            variable = self.progress_var,
+                                            mode = 'indeterminate')
+        self.progress_bar.pack(side=tk.BOTTOM, fill=tk.X, padx=10, pady=10)
+
+    def _on_mousewheel(self, event):
+        tab = self.display_frame.nametowidget(self.display_frame.select())
+        for child in tab.winfo_children():
+            if hasattr(child, "yview"):
+                #child.yview_scroll(int(-1 * (event.delta / 120)), "units")
+                if event.num == 5 or event.delta == -120:
+                    child.yview_scroll(1, "units")
+                elif event.num == 4 or event.delta == 120:
+                    child.yview_scroll(-1, "units")
+                break
+        
 
     def setModelConfig(self):
         if self.model == None:
             self.model = GFLIMModel("", "", "", "", "",
                                     "", "", "", 
                                     0, "", "", 0)
-            
-        model_config = ConfigModel(self.root, self.model.dataset_name, self.model.markers_name, 
+        
+        rerun = True
+        
+        while(rerun):
+
+            model_config = ConfigModel(self.root, self.model.dataset_name, self.model.markers_name, 
                                    self.model.arch_file, self.model.split, self.model.img_set, 
                                    self.model.stride, self.model.attention, self.model.aggregation, 
                                    self.model.nsuperpixels, self.model.graph_feats, self.model.superpixel_alg, 
                                    self.model.init_seeds, self.getModelConfig)
-        model_config.create_widgets()
+            model_config.create_widgets()
+            model_config.grab_set()
+            disableChildren(self.main_frame)
+
+            self.root.wait_window(model_config)
+            if self.model.readytoRun != "":
+                Messagebox.show_error(self.model.readytoRun)
+            else:
+                rerun = False
+
+        enableChildren(self.main_frame)
+        if os.path.exists(self.model.model_img_markers_dir):
+            markers_id = 1
+            for marker_file in os.listdir(self.model.model_img_markers_dir):
+                if marker_file.endswith("-seeds.txt") and os.path.exists("{}/{}".format(self.model.orig_img_markers_dir, marker_file)) == False:
+                    markers_id = 0
+                    break
+            
+            self.markers_var.set(markers_id)
+            if(markers_id == 1):
+                self.model_markers_radiobutton.config(state="normal")
+        
 
     def getModelConfig(self, dataset_name, markers_name, arch_file, split, img_set,
                         stride, attention, aggregation, 
@@ -508,22 +562,35 @@ class IterativeGFLIMTrain:
             int(self.model.init_seeds) != int(init_seeds)):
             run_again = True
 
-        print("Model configuration updated")
-
-        if run_again or (self.model != None and self.model.readytoRun == False):
+        self.progress_bar.start()
+        self.progress_bar.update_idletasks()
+        if run_again or (self.model != None and self.model.readytoRun != ""):
             self.cleanWindow()
             self.model = GFLIMModel(dataset_name, markers_name, arch_file, split, img_set,
                                 stride, attention, aggregation,
                                 nsuperpixels, graph_feats, superpixel_alg, init_seeds)
-            self.train_images_combobox['values'] = [name.split('-')[0] for name in os.listdir(self.model.orig_img_markers_dir) if name.endswith("-seeds.txt")]
-            self.train_images_combobox.current(0)
-            if os.path.exists(self.model.model_img_markers_dir):
-                self.model_markers_radiobutton.config(state=tk.NORMAL)
-            else:
-                self.model_markers_radiobutton.config(state=tk.DISABLED)
-                self.markers_var.set(0)
-            self.show_activations()
             
+            if self.model.readytoRun == "":
+                self.train_images_combobox['values'] = [name.split('-')[0] for name in os.listdir(self.model.orig_img_markers_dir) if name.endswith("-seeds.txt")]
+                self.train_images_combobox.current(0)
+
+                if os.path.exists(self.model.model_img_markers_dir):
+                    self.model_markers_radiobutton.config(state="normal")
+                else:
+                    self.model_markers_radiobutton.config(state="disabled")
+                    self.markers_var.set(0)
+
+                activations_dir = "{}/activationNoMerge{}/".format(self.model.model_dir, self.layer)
+                self.show_activations()
+                if os.path.exists(activations_dir):
+                    self.load_model_toast.show_toast()
+                else:
+                    self.load_NOmodel_toast.show_toast()
+        self.progress_bar.stop()
+        self.progress_var.set(0)
+        self.root.update_idletasks()
+        
+
     def cleanWindow(self):
         for widget in self.display_frame.winfo_children():
             widget.destroy()
@@ -531,10 +598,11 @@ class IterativeGFLIMTrain:
         self.selected_kernels = []
   
     def create_tab(self, frame, label):
-        tab = tk.Frame(frame)
+        print('create_tab')
+        tab = tb.Frame(frame)
         frame.add(tab, text=label)
         
-        canvas = tk.Canvas(tab)
+        canvas = tb.Canvas(tab)
         vscroll = ttk.Scrollbar(tab, orient="vertical", command=canvas.yview)
         vscroll.pack(side=tk.RIGHT, fill=tk.Y)
         hscroll = ttk.Scrollbar(tab,orient="horizontal",command=canvas.xview)
@@ -545,12 +613,11 @@ class IterativeGFLIMTrain:
 
         content = ttk.Frame(canvas)
         canvas.create_window((0, 0), window=content, anchor="nw")
-        content.bind("<Configure>", lambda e: canvas.configure(scrollregion=canvas.bbox("all")))
         return (tab, canvas, content)
 
     def show_activations(self):
         if self.model == None:
-            tkinter.messagebox.showerror("Error", "Model not configured / invalid. Please set the model configuration.")
+            Messagebox.show_error("Model not configured / invalid. Please set the model configuration.")
             return
         
         activations_dir = "{}/activationNoMerge{}/".format(self.model.model_dir, self.layer)
@@ -561,7 +628,7 @@ class IterativeGFLIMTrain:
                 label_dir = os.path.join(activations_dir, label, self.train_img_name.get())
                 self.loadImages(label_dir, self.tabs[label])
         else:
-            label = tk.Label(self.display_frame, text="No activations found. Train a model or set a new configuration.", fg="gray", font=("Arial", 12))
+            label = tb.Label(self.display_frame, text="No activations found. Train a model or set a new configuration.", font=("Arial", 12), anchor="center")
             label.pack(fill=tk.BOTH, expand=True)
             return
 
@@ -572,9 +639,9 @@ class IterativeGFLIMTrain:
         img.thumbnail((height, int(height*(img.width/img.height))), Image.LANCZOS)
         img = ImageTk.PhotoImage(img)
         
-        button = tk.Label(frame, image=img, text=basename, compound=tk.TOP)
+        button = tb.Label(frame, image=img, text=basename, compound=tk.TOP)
         button.image = img
-        button.grid(row=r, column=c)
+        button.grid(row=r, column=c, padx=5, pady=5)
         button.bind("<Button-1>", lambda event, kernel_name=basename, frame=button: self.on_image_click(kernel_name, button))
         #button.config(relief=tk.RAISED)
         
@@ -584,11 +651,10 @@ class IterativeGFLIMTrain:
         kernel_val = int(kernel_name)
         if(kernel_val not in self.selected_kernels):
             self.selected_kernels.append(kernel_val)
-            button.config(bg="gray")
+            button.config(bootstyle="inverse")
         else:
             self.selected_kernels.remove(kernel_val)
-            button.config(bg='#d9d9d9')
-        print("Selected kernels:", self.selected_kernels)
+            button.config(bootstyle="default")
         
     def loadImages(self, img_dir, frame_data):
         frame, canvas, content = frame_data
@@ -614,7 +680,7 @@ class IterativeGFLIMTrain:
         
         print('chamando funcção selectKernels')
         if self.model == None:
-            tkinter.messagebox.showerror("Error", "Model not configured / invalid. Please set the model configuration.")
+            Messagebox.show_error("Model not configured / invalid. Please set the model configuration.")
             return
         
         img_markers = self.model.orig_img_markers_dir if self.markers_var.get() == 0 else self.model.model_img_markers_dir
@@ -625,11 +691,12 @@ class IterativeGFLIMTrain:
         rmdir(self.model.model_dir + "/activationNoMerge{}/".format(self.layer))
         self.model.writeActivations(self.layer)
         self.show_activations()
+        self.kernel_selection_toast.show_toast()
         
 
     def train_layer(self):
         if self.model == None:
-            tkinter.messagebox.showerror("Error", "Model not configured / invalid. Please set the model configuration.")
+            Messagebox.show_error("Model not configured / invalid. Please set the model configuration.")
             return
         
         img_markers = self.model.orig_img_markers_dir if self.markers_var.get() == 0 else self.model.model_img_markers_dir
@@ -637,13 +704,14 @@ class IterativeGFLIMTrain:
 
     def train_layer_no_merge(self):
         if self.model == None:
-            tkinter.messagebox.showerror("Error", "Model not configured / invalid. Please set the model configuration.")
+            Messagebox.show_error("Model not configured / invalid. Please set the model configuration.")
             return
         
         img_markers = self.model.orig_img_markers_dir if self.markers_var.get() == 0 else self.model.model_img_markers_dir
         self.model.trainLayer_noMerge(self.layer, self.model.img_set, img_markers)
         self.model.writeActivations(self.layer)
         self.show_activations()
+        self.train_layer_toast.show_toast()
 
 
 if __name__ == "__main__":
@@ -665,7 +733,8 @@ if __name__ == "__main__":
     markers_name = "gt_markers_erosion5_interative2"
     arch_file = "/home/isabela/Codes/LibIFT/Datasets/cells_dataset/arch_cells.json"
 
-    root = tk.Tk()
+    #root = tk.Tk()
+    root = tb.Window(themename="superhero")
     app = IterativeGFLIMTrain(root, dataset_name, markers_name, arch_file, split, img_set,
                               stride, attention, aggregation,
                               nsuperpixels, graph_feats, superpixel_alg, init_seeds)

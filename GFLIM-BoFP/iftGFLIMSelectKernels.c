@@ -87,7 +87,18 @@ int main(int argc, char *argv[])
     int nnodes = iftMaximumValue(label_img);
     int *labeled_superpixels = (int *)iftAlloc(nnodes, sizeof(int));
     int i = 0;
+    iftLabeledSet *new_graph_seeds = NULL;
     while (s != NULL)
+    {
+        if (maintain_kernels_set[i])
+        {
+            labeled_superpixels[s->elem] = s->label+1;
+            iftInsertLabeledSetMarkerAndHandicap(&new_graph_seeds, s->elem, s->label, s->marker, 0);
+        }
+        s = s->next;
+        i++;
+    }
+    /*while (s != NULL)
     {
         if (!maintain_kernels_set[i])
         {
@@ -114,8 +125,10 @@ int main(int argc, char *argv[])
             s = s->next;
         }
         i++;
-    }
+    }*/
     iftFree(maintain_kernels_set);
+    iftDestroyLabeledSet(&graph_seeds);
+    graph_seeds = new_graph_seeds;
 
     // ---> create a set of image markers, labeling all pixels from marked nodes (superpixels)
 

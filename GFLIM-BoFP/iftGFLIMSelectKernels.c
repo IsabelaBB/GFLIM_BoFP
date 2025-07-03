@@ -46,7 +46,7 @@ int main(int argc, char *argv[])
         iftError("Model directory does not exist: %s", "main", model_dir);
 
     sprintf(filename, "%s/markers/", model_dir);
-    if (!iftDirExists(model_dir))
+    if (!iftDirExists(filename))
         iftError("Graph markers directory does not exist: %s", "main", filename);
 
     if (!iftDirExists(image_markers_dir))

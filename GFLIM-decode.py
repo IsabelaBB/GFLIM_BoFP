@@ -13,7 +13,7 @@ parser.add_argument("arch_file", help="Arch file", type=str)
 parser.add_argument("layer", help="Layer number", type=int)
 parser.add_argument("model_dir", help="Model directory", type=str)
 parser.add_argument("stride", help="Stride type", type=str, choices=["none", "image-based", "graph-based"])
-parser.add_argument("decoder", help="Decoder type.", type=str, choices=["tristate", "hybrid", "graph-adaptive", "gaussian", "test"])
+parser.add_argument("decoder", help="Decoder type.", type=str, choices=["tristate", "hybrid", "graph-adaptive", "gaussian", "test", 'mean'])
 
 parser.add_argument("-path", "--path", help=" ", type=str, default="../bin")
 

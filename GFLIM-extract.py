@@ -20,7 +20,7 @@ parser.add_argument("graph_feat", help="Graph feature (see iftGFLIMGraph.h for m
                                                                                                                       "MEAN_CONCAT_RELSIZE", "MEAN_CONCAT_RELSIZE_NEIGHB", "MEAN_CONCAT_RELSIZE_HARALICK", 
                                                                                                                       "SUM_MULT_RELSIZE_CONCAT_HARALICK", "SUM_CONCAT_HARALICK"])
 parser.add_argument("spx_alg", help="Superpixel algorithm.", type=str, choices=["DISF", "ERGC"])
-parser.add_argument("decoder", help="Decoder type.", type=str, choices=["tristate", "hybrid", "graph-adaptive", "gaussian"])
+parser.add_argument("decoder", help="Decoder type.", type=str, choices=["tristate", "hybrid", "graph-adaptive", "gaussian", 'mean'])
 parser.add_argument("attention", help="Attention option.", type=str, choices=["NONE", "NODE_RELSIZE", "NODE_SIZE", "NEIGHB_SIMIL", "NEIGHB_SIZE", 
                                                                                 "CLASS_DOMINANCE", "CLASS_DOMINANCE_WINNER", "CLASS_DOMINANCE_POWER2", "CLASS_DOMINANCE_SOFTMAX_NEIGHB",
                                                                                 "COSINE_SIMILARITY"])

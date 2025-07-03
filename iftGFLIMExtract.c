@@ -249,6 +249,10 @@ int main(int argc, char *argv[])
     case IFT_GFLIM_TEST_DECODER:
         sprintf(saliency_dir, "%s/test_%d", model_dir, nLayers);
         break;
+        
+    case IFT_GFLIM_MEAN_DECODER:
+        sprintf(saliency_dir, "%s/mean_%d", model_dir, nLayers);
+        break;
 
     default:
         iftError("Invalid decoder type: %d", "main", decoder);

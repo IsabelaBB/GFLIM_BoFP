@@ -53,6 +53,10 @@ void validateArgs(int layer, char *model_dir, iftGFLIMDecoderType decoder, iftGF
     case IFT_GFLIM_TEST_DECODER:
         sprintf(output_dir, "%s/test_%d", model_dir, layer);
         break;
+    
+    case IFT_GFLIM_MEAN_DECODER:
+        sprintf(output_dir, "%s/mean_%d", model_dir, layer);
+        break;
 
     default:
         iftError("Invalid decoder type: %d", "main", decoder);

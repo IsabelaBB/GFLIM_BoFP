@@ -6,8 +6,8 @@
  */
 
 void validateArgs(char *images_dir, char *model_dir, iftFLIMArch *arch, int nLayers, 
-                  iftFLIMGraphType graph_type, int nsuperpixels, int batchsize, 
-                  int argc, char *argv[], int *initial_seeds)
+                  int batchsize, 
+                  int argc, char *argv[])
 {
     if (nLayers < 1)
         iftError("Invalid number of layers: %d", "main", nLayers);
@@ -20,30 +20,15 @@ void validateArgs(char *images_dir, char *model_dir, iftFLIMArch *arch, int nLay
 
     if (!iftDirExists(model_dir))
         iftError("Model directory does not exist", "main");
-
-    if (nsuperpixels < 1)
-        iftError("Invalid number of superpixels: %d", "main", nsuperpixels);
     
     if (batchsize < 1)
         iftError("Invalid batch size: %d", "main", batchsize);
-
-    if (graph_type == IFT_FLIMGRAPH_TYPE_DISF)
-    {
-        if (argc < 16)
-            iftError("Initial seeds is required when superpixel method is DISF", "main");
-        (*initial_seeds) = atoi(argv[15]);
-        if ((*initial_seeds) < 1)
-            iftError("Invalid number of initial seeds: %d", "main", (*initial_seeds));
-        if (nsuperpixels > (*initial_seeds))
-            iftError("Number of superpixels (%d) must be smaller than the number of initial seeds (%d)", "main", nsuperpixels, (*initial_seeds));
-    }
 }
 
 void ProcessBatch(iftFileSet *fs_imgs, int first, int last, 
                 char *graphs_dir, char *labels_dir, 
                 char *model_dir, 
-                int initial_seeds, int nsuperpixels, int nLayers,
-                iftFLIMGraphFeature graph_feat, iftFLIMGraphType graph_type,
+                int nLayers,
                 iftFLIMGraphAttention attention_opt, iftGFLIMStrideType stride_type,
                 iftGFLIMAggregationType aggregation_opt, bool kernel_removal,
                 iftFLIMArch *arch)
@@ -178,24 +163,20 @@ int main(int argc, char *argv[])
 {
     timer *tstart;
 
-    if (argc != 16 && argc != 15)
+    if (argc != 12)
     {
-        iftError("Usage: iftGFLIMExtract <P1> <P2> <P3> <P4> <P5> <P6> <P7> <P8> <P9> <P10> <P11> <P12> <P13> <P14> <P15> [<P16>] \n"
+        iftError("Usage: iftGFLIMExtract <P1> <P2> <P3> <P4> <P5> <P6> <P7> <P8> <P9> <P10> <P11> \n"
                  "[ 1] Images directory \n"
                  "[ 2] Graphs directory \n"
                  "[ 3] Labels directory \n"
                  "[ 4] Model directory \n"
                  "[ 5] Architecture file \n"
                  "[ 6] Number of layers \n"
-                 "[ 7] Graph feature {MEAN, SUM, SUM_MULT_RELSIZE, SUM_CONCAT_RELSIZE} (see iftGFLIMGraph.h for more information) \n"
-                 "[ 8] superpixel method {1:DISF, 2:ERGC} \n"
-                 "[ 9] Number of superpixels \n"
-                 "[10] Batch size (> 0) \n"
-                 "[11] Stride type (none, image-based, graph-based) \n"
-                 "[12] attention (NONE, NODE_SIZE, NEIGHB_SIMIL, NEIGHB_SIZE) \n"
-                 "[13] aggregation (CONCAT, MEAN, WMEAN) \n"
-                 "[14] reduce kernels (1/0) \n"
-                 "[15] Initial seeds (only used when superpixel method is DISF) \n",
+                 "[ 7] Batch size (> 0) \n"
+                 "[ 8] Stride type (none, image-based, graph-based) \n"
+                 "[ 9] attention (NONE, NODE_SIZE, NEIGHB_SIMIL, NEIGHB_SIZE) \n"
+                 "[10] aggregation (CONCAT, MEAN, WMEAN) \n"
+                 "[11] reduce kernels (1/0) \n"
                  "argc: %d",
                  "main", argc);
     }
@@ -207,17 +188,13 @@ int main(int argc, char *argv[])
     char *model_dir = argv[4];
     iftFLIMArch *arch = iftReadFLIMArch(argv[5]);
     int nLayers = atoi(argv[6]);
-    iftFLIMGraphFeature graph_feat = iftGFLIMGetGraphFeature(argv[7]);
-    iftFLIMGraphType graph_type = iftGFLIMGetGraphType(argv[8]);
-    int nsuperpixels = atoi(argv[9]);
-    int batchsize = atoi(argv[10]);
-    iftGFLIMStrideType stride_type = iftGFLIMGetStrideType(argv[11]);
-    iftFLIMGraphAttention attention_opt = iftGLIMGraphGetAttentionType(argv[12]);
-    iftGFLIMAggregationType aggregation_opt = iftGLIMGraphGetAggregationType(argv[13]);
-    bool kernel_removal = atoi(argv[14]);
+    int batchsize = atoi(argv[7]);
+    iftGFLIMStrideType stride_type = iftGFLIMGetStrideType(argv[8]);
+    iftFLIMGraphAttention attention_opt = iftGLIMGraphGetAttentionType(argv[9]);
+    iftGFLIMAggregationType aggregation_opt = iftGLIMGraphGetAggregationType(argv[10]);
+    bool kernel_removal = atoi(argv[11]);
 
-    int initial_seeds = 0;
-    validateArgs(images_dir, model_dir, arch, nLayers, graph_type, nsuperpixels, batchsize, argc, argv, &initial_seeds);
+    validateArgs(images_dir, model_dir, arch, nLayers, batchsize, argc, argv);
 
     iftFileSet *fs_imgs = iftLoadFileSetFromDir(images_dir, 1);
     int ngraphs = fs_imgs->n;
@@ -238,8 +215,7 @@ int main(int argc, char *argv[])
         fflush(stdout);
 
         ProcessBatch(fs_imgs, first, last, graphs_dir, labels_dir, model_dir, 
-                    initial_seeds, nsuperpixels, nLayers,
-                    graph_feat, graph_type,
+                    nLayers,
                     attention_opt, stride_type,
                     aggregation_opt, kernel_removal,
                     arch);
@@ -253,8 +229,7 @@ int main(int argc, char *argv[])
 
         ProcessBatch(fs_imgs, first, last, 
             graphs_dir, labels_dir, model_dir, 
-            initial_seeds, nsuperpixels, nLayers,
-            graph_feat, graph_type,
+            nLayers,
             attention_opt, stride_type,
             aggregation_opt, kernel_removal,
             arch);

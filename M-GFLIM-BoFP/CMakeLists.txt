@@ -1,0 +1,3 @@
+add_executable(iftGFLIMWriteKernelsCorrespondence iftGFLIMWriteKernelsCorrespondence.c)
+target_link_libraries(iftGFLIMWriteKernelsCorrespondence ift)
+

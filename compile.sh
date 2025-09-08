@@ -3,7 +3,7 @@ if [ "$#" -ne 1 ]; then
   exit 1
 fi
 
-make IFT_GPU=$1 iftCreateGFLIMGraph iftGFLIMConvertSeeds iftGFLIMDecodeLayer iftGFLIMExtract iftGFLIMExtract2 iftGFLIMWriteActivations iftWriteSeedsVectors
+make IFT_GPU=$1 iftCreateGFLIMGraph iftGFLIMConvertSeeds iftGFLIMDecodeLayer iftGFLIMExtract iftGFLIMExtract2 iftGFLIMWriteActivations iftWriteSeedsVectors iftRGBBucketDescriptor iftCreateGFLIMGraphFromLabels
 cd GFLIM
 bash compile.sh $1
 cd ..
@@ -13,3 +13,7 @@ cd ..
 cd GFLIM-BoFP-U
 bash compile.sh $1
 cd ..
+cd M-GFLIM-BoFP
+bash compile.sh $1
+cd ..
+

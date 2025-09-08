@@ -11,7 +11,7 @@ int main(int argc, char *argv[])
     timer *tstart;
 
     if (argc != 7)
-        iftError("Usage: iftGFLIMGSEncodeMergedLayer <P1> <P2> <P3> <P4> <P5> <P6> \n"
+        iftError("Usage: iftGFLIMGSEncodeLayer <P1> <P2> <P3> <P4> <P5> <P6> \n"
                  "[1] model directory \n"
                  "[2] architecture of the network (.json) \n"
                  "[3] layer number (1, 2, 3) \n"

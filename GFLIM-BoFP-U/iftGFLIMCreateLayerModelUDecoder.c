@@ -264,9 +264,10 @@ int main(int argc, char *argv[])
             iftError("Labels file %s does not exist", __func__, filename);
         skipConn_labels = iftReadImageByExt(filename);        
 
-        iftLabeledSet *T = iftGFLIMUpdateGraphMarkers(S, skipConn_labels, label_img0);
-        iftDestroyLabeledSet(&S);
-        S = T;
+        //iftLabeledSet *T = iftGFLIMUpdateGraphMarkers(S, skipConn_labels, label_img0);
+        //iftDestroyLabeledSet(&S);
+        //S = T;
+        iftGFLIMUpdateGraphMarkers(S, skipConn_labels, label_img0);
         iftDestroyImage(&label_img0);
 
         sprintf(filename, "%s/%s%s", input_labels_dir, basename, ".pgm");

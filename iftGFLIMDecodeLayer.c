@@ -105,7 +105,7 @@ int main(int argc, char *argv[])
         char *basename = iftFilename(fs->files[i]->path, ".json");
 
         // load the graph and superpixel image
-        iftFLIMGraph *graph = iftReadFLIMGraph(fs->files[i]->path);
+        iftGFLIMGraph *graph = iftReadFLIMGraph(fs->files[i]->path);
         sprintf(filename, "%s/%s.pgm", labels_dir, basename);
         iftImage *label_img = iftReadImageByExt(filename);
 

@@ -7,10 +7,10 @@
  * \note Differs from iftGFLIMCreateLayerModel on the unpooling operation.
  */
 
-iftMatrix *iftGFLIMUCreateLayerModel(iftFLIMGraph *graph, iftLabeledSet *S,
+iftMatrix *iftGFLIMUCreateLayerModel(iftGFLIMGraph *graph, iftLabeledSet *S,
                                     iftFLIMLayer layer, float stdev_factor,
                                     float **bias, int **truelabel,
-                                    iftFLIMGraphAttention attention_opt,
+                                    iftGFLIMGraphAttention attention_opt,
                                     iftGFLIMAggregationType aggregation_opt)
 {
     iftDataSet *Z = iftGFLIMExtractLabelDataSet(graph, S, layer.kernel_size[0] * layer.kernel_size[1], attention_opt, aggregation_opt);
@@ -124,7 +124,7 @@ iftSet **createLabelDict(iftImage *input_label_map, iftImage *skipConn_label_map
 	return label_dict;
 }
 
-iftFLIMGraph *unpool(iftFLIMGraph *input_graph, iftFLIMGraph *skipConn_graph, iftSet **label_dict, char *skip_operation)
+iftGFLIMGraph *unpool(iftGFLIMGraph *input_graph, iftGFLIMGraph *skipConn_graph, iftSet **label_dict, char *skip_operation)
 {
 	int new_nfeatures = input_graph->num_feats;
 	
@@ -136,7 +136,7 @@ iftFLIMGraph *unpool(iftFLIMGraph *input_graph, iftFLIMGraph *skipConn_graph, if
         new_nfeatures = iftMax(skipConn_graph->num_feats, new_nfeatures);
     }
     
-	iftFLIMGraph *unpool_graph = iftCopyFLIMGraph(new_nfeatures, skipConn_graph, false); 
+	iftGFLIMGraph *unpool_graph = iftCopyFLIMGraph(new_nfeatures, skipConn_graph, false); 
 	
 	for(int input_node=0; input_node < input_graph->num_nodes; input_node++)
 	{
@@ -201,7 +201,7 @@ int main(int argc, char *argv[])
     char *model_dir = argv[1];
     iftFLIMArch *arch = iftReadFLIMArch(argv[2]);
     int layer = atoi(argv[3]);
-    iftFLIMGraphAttention attention_opt = iftGLIMGraphGetAttentionType(argv[4]);
+    iftGFLIMGraphAttention attention_opt = iftGLIMGraphGetAttentionType(argv[4]);
     iftGFLIMAggregationType aggregation_opt = iftGLIMGraphGetAggregationType(argv[5]);
     int level = atoi(argv[6]); // indicate the depth of the layer that's being created
 
@@ -283,13 +283,13 @@ int main(int argc, char *argv[])
         sprintf(filename, "%s/%s%s", input_graph_dir, basename, ".json");
         if (!iftFileExists(filename))
             iftError("Graph file %s does not exist", "main", filename);
-        iftFLIMGraph *input_graph = iftReadFLIMGraph(filename);
+        iftGFLIMGraph *input_graph = iftReadFLIMGraph(filename);
 
         // read the current graph
         sprintf(filename, "%s/%s%s", skipConn_graph_dir, basename, ".json");
         if (!iftFileExists(filename))
             iftError("Graph file %s does not exist", "main", filename);
-        iftFLIMGraph *skipConn_graph = iftReadFLIMGraph(filename);
+        iftGFLIMGraph *skipConn_graph = iftReadFLIMGraph(filename);
 
         // push seeds that did not exist in the previous layer at the end of the seed set
         /*int *seed_nodes = iftAlloc(skipConn_graph->num_nodes, sizeof(int*));
@@ -313,7 +313,7 @@ int main(int argc, char *argv[])
         iftDestroyImage(&skipConn_labels);
 
         // unpool and skip connection
-        iftFLIMGraph *unpool_graph = unpool(input_graph, skipConn_graph, label_dict, "sum");
+        iftGFLIMGraph *unpool_graph = unpool(input_graph, skipConn_graph, label_dict, "sum");
         iftDestroyFLIMGraph(&skipConn_graph);
         for(int i = 0; i < input_graph->num_nodes; i++)
             iftDestroySet(&label_dict[i]);

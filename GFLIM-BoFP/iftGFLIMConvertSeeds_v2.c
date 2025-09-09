@@ -12,15 +12,15 @@
  * \param S The labeled set with the seeds.
  * \param kernel_size The size of the kernel (number of neighbors) used to extract the features.
  * \param nclusters_per_marker The number of clusters per marker.
- * \param attention_opt The attention option to be used. @see iftFLIMGraphAttention for more details.
+ * \param attention_opt The attention option to be used. @see iftGFLIMGraphAttention for more details.
  * \param aggregation_opt The aggregation strategy to be used. @see iftGFLIMAggregationType for more details.
  * \return The dataset with the seeds.
  */
-iftDataSet *iftGFLIMSelectClusterCenters_perGraph(iftFLIMGraph *graph,
+iftDataSet *iftGFLIMSelectClusterCenters_perGraph(iftGFLIMGraph *graph,
                                             iftLabeledSet *S,
                                             int kernel_size,
                                             int nclusters_per_marker,
-                                            iftFLIMGraphAttention attention_opt,
+                                            iftGFLIMGraphAttention attention_opt,
                                             iftGFLIMAggregationType aggregation_opt)
 {
 #ifdef IFT_DEBUG
@@ -187,7 +187,7 @@ int main(int argc, char *argv[]) {
     int nfpts_per_marker = atoi(argv[3]); 
     int kernel_size = atoi(argv[4]);
     int nfpts_per_label = atoi(argv[5]);
-    iftFLIMGraphAttention attention_opt = iftGLIMGraphGetAttentionType(argv[6]);
+    iftGFLIMGraphAttention attention_opt = iftGLIMGraphGetAttentionType(argv[6]);
     iftGFLIMAggregationType aggregation_opt = iftGLIMGraphGetAggregationType(argv[7]);
     
     if(!iftDirExists(model_dir))
@@ -228,7 +228,7 @@ int main(int argc, char *argv[]) {
         // read the graph
         sprintf(filename, "%s/%s.json", graph_dir, basename);
         if(!iftFileExists(filename)) iftError("Graph file %s does not exist", __func__, filename);
-        iftFLIMGraph *graph = iftReadFLIMGraph(filename);
+        iftGFLIMGraph *graph = iftReadFLIMGraph(filename);
 
         // convert image seeds to graph seeds
         iftLabeledSet *graph_seeds = iftGFLIMImageMarkersToGraphMarkers(label_img, S, IFT_GFLIM_NOSTRIDE, label_img->xsize, label_img->ysize);

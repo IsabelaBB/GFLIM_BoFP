@@ -186,7 +186,7 @@ int main(int argc, char *argv[])
         printf("Writing activation for image %s \n", basename);
 
         // read the graph and the superpixels image
-        iftFLIMGraph *graph = iftReadFLIMGraph(fs->files[i]->path);
+        iftGFLIMGraph *graph = iftReadFLIMGraph(fs->files[i]->path);
         sprintf(filename, "%s/%s.pgm", labels_dir, basename);
         iftImage *label_img = iftReadImageByExt(filename);
         int nkernels = graph->num_feats;
@@ -232,7 +232,7 @@ int main(int argc, char *argv[])
         }
 
         // convert from graph to activations (one activation per graph channel)
-        iftImage **activations = iftFLIMGraphToActivations(graph, label_img);
+        iftImage **activations = iftGFLIMGraphToActivations(graph, label_img);
         iftDestroyImage(&label_img);
 
         if (nlabels != 0) // GFLIM-BoFP

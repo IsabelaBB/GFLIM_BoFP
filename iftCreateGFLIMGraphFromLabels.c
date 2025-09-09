@@ -4,7 +4,7 @@
  */
 
 #include "iftCommon.h"
-#include "iftFLIMGraph.h"
+#include "iftGFLIMGraph.h"
 
 void usage()
 {
@@ -12,7 +12,7 @@ void usage()
     printf("iftCreateGFLIMGraph <P1> <P2> <P3> <P4> \n");
     printf("P1: original images directory \n");
     printf("P2: superpixel images diretory \n");
-    printf("P3: Graph feature (MEAN, SUM, SUM_MULT_RELSIZE, SUM_CONCAT_RELSIZE). See iftFLIMGraphFeature at iftGFLIMGraph.h for details \n");
+    printf("P3: Graph feature (MEAN, SUM, SUM_MULT_RELSIZE, SUM_CONCAT_RELSIZE). See iftGFLIMGraphFeature at iftGFLIMGraph.h for details \n");
     printf("P4: graphs diretory \n");
     
 }
@@ -32,7 +32,7 @@ int main(int argc, char *argv[])
     timer *tstart = iftTic();
     char *images_dir = argv[1];
     char *spx_dir = argv[2];
-    iftFLIMGraphFeature graph_feat = iftGFLIMGetGraphFeature(argv[3]);
+    iftGFLIMGraphFeature graph_feat = iftGFLIMGetGraphFeature(argv[3]);
     char *graphs_dir = argv[4];
     
 
@@ -76,7 +76,7 @@ int main(int argc, char *argv[])
         // If processing ERGC superpixels, replace sqrtf(2.0) with 1.0 to ensure correct adjacency.
         iftAdjRel *A = iftCircular(sqrtf(2.0));
         iftImage *gray_img = NULL;
-        iftFLIMGraph *graph;
+        iftGFLIMGraph *graph;
 
         //printf("Converting image to MImage ...\n");
         if (iftIsColorImage(img))

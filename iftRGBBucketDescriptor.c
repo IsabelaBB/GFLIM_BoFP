@@ -1,4 +1,4 @@
-#include "iftFLIMGraph.h"
+#include "iftGFLIMGraph.h"
 
 /*
 spx:

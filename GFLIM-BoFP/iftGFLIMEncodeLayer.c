@@ -26,7 +26,7 @@ int main(int argc, char *argv[])
     iftFLIMArch *arch = iftReadFLIMArch(argv[2]);
     int layer = atoi(argv[3]);
     iftGFLIMStrideType stride_type = iftGFLIMGetStrideType(argv[4]);
-    iftFLIMGraphAttention attention_opt = iftGLIMGraphGetAttentionType(argv[5]);
+    iftGFLIMGraphAttention attention_opt = iftGLIMGraphGetAttentionType(argv[5]);
     iftGFLIMAggregationType aggregation_opt = iftGLIMGraphGetAggregationType(argv[6]);
     
     if (layer < 1)
@@ -73,7 +73,7 @@ int main(int argc, char *argv[])
             iftFree(basename);
             continue;
         }
-        iftFLIMGraph *graph = iftReadFLIMGraph(filename);
+        iftGFLIMGraph *graph = iftReadFLIMGraph(filename);
 
         // check if there are kernels created from the graph
         sprintf(filename, "%s/model/%s-conv%d-kernels.npy", model_dir, basename, layer);
@@ -110,7 +110,7 @@ int main(int argc, char *argv[])
         }
 
         // encode the layer
-        iftFLIMGraph *output_graph = iftGFLIMEncodeLayer(graph, K, bias, arch->layer[layer - 1], stride_type, input_labels, &output_labels, attention_opt, true_labels, aggregation_opt, false);
+        iftGFLIMGraph *output_graph = iftGFLIMEncodeLayer(graph, K, bias, arch->layer[layer - 1], stride_type, input_labels, &output_labels, attention_opt, true_labels, aggregation_opt, false);
         if(true_labels != NULL) iftFree(true_labels);
 
         /* save superpixel labels and graph (layer output) */

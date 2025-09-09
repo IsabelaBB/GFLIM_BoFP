@@ -8,10 +8,10 @@
  */
 
 
-iftFLIMGraph *iftGFLIMUEncodeLayer(iftFLIMGraph *graph,
+iftGFLIMGraph *iftGFLIMUEncodeLayer(iftGFLIMGraph *graph,
                                   iftMatrix *Kernels, float *bias,
                                   iftFLIMLayer layer, 
-                                  iftFLIMGraphAttention attention_opt, 
+                                  iftGFLIMGraphAttention attention_opt, 
                                   int *kernel_labels,
                                   iftGFLIMAggregationType aggregation_opt,
                                   bool reduce)
@@ -42,7 +42,7 @@ iftFLIMGraph *iftGFLIMUEncodeLayer(iftFLIMGraph *graph,
     printf("\n");
 #endif
 
-    iftFLIMGraph *output_graph = iftMImageToFLIMGraph(activ_relu, graph);
+    iftGFLIMGraph *output_graph = iftMImageToFLIMGraph(activ_relu, graph);
     iftDestroyMImage(&activ_relu);
     
     return output_graph;
@@ -67,7 +67,7 @@ int main(int argc, char *argv[])
     char *model_dir = argv[1];
     iftFLIMArch *arch = iftReadFLIMArch(argv[2]);
     int layer = atoi(argv[3]);
-    iftFLIMGraphAttention attention_opt = iftGLIMGraphGetAttentionType(argv[4]);
+    iftGFLIMGraphAttention attention_opt = iftGLIMGraphGetAttentionType(argv[4]);
     iftGFLIMAggregationType aggregation_opt = iftGLIMGraphGetAggregationType(argv[5]);
     bool kernel_removal = false;
     if (argc == 7)
@@ -124,13 +124,13 @@ int main(int argc, char *argv[])
         char *basename = iftFilename(fs->files[i]->path, ".json");
 
         // read the graph and superpixel image
-        iftFLIMGraph *graph = iftReadFLIMGraph(fs->files[i]->path);
+        iftGFLIMGraph *graph = iftReadFLIMGraph(fs->files[i]->path);
         iftImage *input_labels = NULL;
         sprintf(filename, "%s/%s.pgm", labels_dir, basename);
         input_labels = iftReadImageByExt(filename);
 
         /* conv + att + bias */
-        iftFLIMGraph *conv_graph = iftGFLIMUEncodeLayer(graph, Kmerged, bias_merged, arch->layer[layer - 1], attention_opt, true_labels, aggregation_opt, kernel_removal);
+        iftGFLIMGraph *conv_graph = iftGFLIMUEncodeLayer(graph, Kmerged, bias_merged, arch->layer[layer - 1], attention_opt, true_labels, aggregation_opt, kernel_removal);
         iftDestroyFLIMGraph(&graph);
 
         // save no pool graph to be used in skip connection
@@ -147,7 +147,7 @@ int main(int argc, char *argv[])
         /* stride model */
         if(arch->layer[layer - 1].pool_stride != 1)
         {
-            iftFLIMGraph *output_graph = NULL;
+            iftGFLIMGraph *output_graph = NULL;
             iftImage *output_labels = NULL;
             int nodes_map[conv_graph->num_nodes];
             output_labels = iftCreateImage(input_labels->xsize, input_labels->ysize, input_labels->zsize);

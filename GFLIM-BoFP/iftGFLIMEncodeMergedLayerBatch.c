@@ -29,7 +29,7 @@ int main(int argc, char *argv[])
     int layer = atoi(argv[3]);
     int batchsize = atoi(argv[4]);
     iftGFLIMStrideType stride_type = iftGFLIMGetStrideType(argv[5]);
-    iftFLIMGraphAttention attention_opt = iftGLIMGraphGetAttentionType(argv[6]);
+    iftGFLIMGraphAttention attention_opt = iftGLIMGraphGetAttentionType(argv[6]);
     iftGFLIMAggregationType aggregation_opt = iftGLIMGraphGetAggregationType(argv[7]);
     bool kernel_removal = false;
     if (argc == 9)
@@ -90,7 +90,7 @@ int main(int argc, char *argv[])
         char **basename = (char **)calloc(last - first + 1, sizeof(char *));
 
         /* read graphs */
-        iftFLIMGraphArray *input_graph = iftCreateEmptyFLIMGraphArray(last - first + 1);
+        iftGFLIMGraphArray *input_graph = iftCreateEmptyFLIMGraphArray(last - first + 1);
         iftImageArray *label_imgs = iftCreateImageArray(last - first + 1);
         for (int j = 0; j < (last - first + 1); j++)
         {
@@ -125,7 +125,7 @@ int main(int argc, char *argv[])
     {
         char **basename = (char **)calloc(last - first + 1, sizeof(char *));
         /* read graphs */
-        iftFLIMGraphArray *input_graph = iftCreateEmptyFLIMGraphArray(last - first + 1);
+        iftGFLIMGraphArray *input_graph = iftCreateEmptyFLIMGraphArray(last - first + 1);
         iftImageArray *label_imgs = iftCreateImageArray(last - first + 1);
         for (int j = 0; j < (last - first + 1); j++)
         {

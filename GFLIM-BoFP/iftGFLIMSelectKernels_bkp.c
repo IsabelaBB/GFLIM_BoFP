@@ -45,7 +45,7 @@ int main(int argc, char *argv[])
     char *rem_kernel_list = argv[4];
     char *image_name = argv[5];
     int kernel_size = 0;
-    iftFLIMGraphAttention attention_opt = IFT_FLIMGRAPH_ATTENTION_NONE;
+    iftGFLIMGraphAttention attention_opt = IFT_FLIMGRAPH_ATTENTION_NONE;
     iftGFLIMAggregationType aggregation_opt = IFT_GFLIM_AGGREGATION_CONCAT;
     iftGFLIMDimReductionType dimReduction = IFT_GFLIM_DIMREDUCTION_NONE;
 
@@ -106,7 +106,7 @@ int main(int argc, char *argv[])
         sprintf(filename, "%s/%s.json", graph_dir, image_name);
         if (!iftFileExists(filename))
             iftError("Graph file %s does not exist", __func__, filename);
-        iftFLIMGraph *graph = iftReadFLIMGraph(filename);
+        iftGFLIMGraph *graph = iftReadFLIMGraph(filename);
 
         // perform a k-means per marker and reduce the number of seeds
         iftLabeledSet *T = iftGFLIMSelectClusterCenters(graph, graph_seeds, kernel_size, nfpts_per_marker, attention_opt, dimReduction, 1, aggregation_opt);

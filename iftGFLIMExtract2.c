@@ -29,7 +29,7 @@ void ProcessBatch(iftFileSet *fs_imgs, int first, int last,
                 char *graphs_dir, char *labels_dir, 
                 char *model_dir, 
                 int nLayers,
-                iftFLIMGraphAttention attention_opt, iftGFLIMStrideType stride_type,
+                iftGFLIMGraphAttention attention_opt, iftGFLIMStrideType stride_type,
                 iftGFLIMAggregationType aggregation_opt, bool kernel_removal,
                 iftFLIMArch *arch)
 {
@@ -37,7 +37,7 @@ void ProcessBatch(iftFileSet *fs_imgs, int first, int last,
     iftImageArray *label_imgs = iftCreateImageArray(ngraphs_batch);
     
     /* Create graphs */
-    iftFLIMGraphArray *input = iftCreateEmptyFLIMGraphArray(ngraphs_batch);
+    iftGFLIMGraphArray *input = iftCreateEmptyFLIMGraphArray(ngraphs_batch);
 
     for (int k = 0; k <= last - first; k++)
     {
@@ -190,7 +190,7 @@ int main(int argc, char *argv[])
     int nLayers = atoi(argv[6]);
     int batchsize = atoi(argv[7]);
     iftGFLIMStrideType stride_type = iftGFLIMGetStrideType(argv[8]);
-    iftFLIMGraphAttention attention_opt = iftGLIMGraphGetAttentionType(argv[9]);
+    iftGFLIMGraphAttention attention_opt = iftGLIMGraphGetAttentionType(argv[9]);
     iftGFLIMAggregationType aggregation_opt = iftGLIMGraphGetAggregationType(argv[10]);
     bool kernel_removal = atoi(argv[11]);
 

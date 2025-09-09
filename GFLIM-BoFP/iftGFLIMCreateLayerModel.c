@@ -27,7 +27,7 @@ int main(int argc, char *argv[])
     iftFLIMArch *arch = iftReadFLIMArch(argv[2]);
     int layer = atoi(argv[3]);
     iftGFLIMStrideType stride_type = iftGFLIMGetStrideType(argv[4]);
-    iftFLIMGraphAttention attention_opt = iftGLIMGraphGetAttentionType(argv[5]);
+    iftGFLIMGraphAttention attention_opt = iftGLIMGraphGetAttentionType(argv[5]);
     iftGFLIMAggregationType aggregation_opt = iftGLIMGraphGetAggregationType(argv[6]);
 
     char graph_dir[200], labels_dir[200];
@@ -71,7 +71,7 @@ int main(int argc, char *argv[])
         // read the graph
         sprintf(filename, "%s/%s%s", graph_dir, basename, ".json");
         if(!iftFileExists(filename)) iftError("Graph file %s does not exist", "main", filename);
-        iftFLIMGraph *graph = iftReadFLIMGraph(filename);
+        iftGFLIMGraph *graph = iftReadFLIMGraph(filename);
         
         // read the superpixel image for the first and current layer
         iftImage *label_img0 = NULL, *label_img = NULL;

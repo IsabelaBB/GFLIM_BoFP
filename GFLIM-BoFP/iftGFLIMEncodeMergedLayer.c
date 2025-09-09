@@ -26,7 +26,7 @@ int main(int argc, char *argv[])
     iftFLIMArch *arch = iftReadFLIMArch(argv[2]);
     int layer = atoi(argv[3]);
     iftGFLIMStrideType stride_type = iftGFLIMGetStrideType(argv[4]);
-    iftFLIMGraphAttention attention_opt = iftGLIMGraphGetAttentionType(argv[5]);
+    iftGFLIMGraphAttention attention_opt = iftGLIMGraphGetAttentionType(argv[5]);
     iftGFLIMAggregationType aggregation_opt = iftGLIMGraphGetAggregationType(argv[6]);
     bool kernel_removal = false;
     if (argc == 8)
@@ -84,7 +84,7 @@ int main(int argc, char *argv[])
         char *basename = iftFilename(fs->files[i]->path, ".json");
 
         // read the graph and superpixel image
-        iftFLIMGraph *graph = iftReadFLIMGraph(fs->files[i]->path);
+        iftGFLIMGraph *graph = iftReadFLIMGraph(fs->files[i]->path);
         iftImage *input_labels = NULL, *output_labels = NULL;
         if (stride_type != IFT_GFLIM_NOSTRIDE)
         {
@@ -93,7 +93,7 @@ int main(int argc, char *argv[])
         }
         
         // encode layer
-        iftFLIMGraph *output_graph = iftGFLIMEncodeLayer(graph, Kmerged, bias_merged, arch->layer[layer - 1], stride_type, input_labels, &output_labels, attention_opt, true_labels, aggregation_opt, kernel_removal);
+        iftGFLIMGraph *output_graph = iftGFLIMEncodeLayer(graph, Kmerged, bias_merged, arch->layer[layer - 1], stride_type, input_labels, &output_labels, attention_opt, true_labels, aggregation_opt, kernel_removal);
 
         iftDestroyImage(&input_labels);
         iftDestroyFLIMGraph(&graph);

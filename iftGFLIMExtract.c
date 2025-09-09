@@ -6,7 +6,7 @@
  */
 
 void validateArgs(char *images_dir, char *model_dir, iftFLIMArch *arch, int nLayers, 
-                  iftFLIMGraphType graph_type, int nsuperpixels, int batchsize, 
+                  iftGFLIMGraphType graph_type, int nsuperpixels, int batchsize, 
                   int argc, char *argv[], int *initial_seeds)
 {
     if (nLayers < 1)
@@ -42,12 +42,12 @@ void validateArgs(char *images_dir, char *model_dir, iftFLIMArch *arch, int nLay
 void ProcessBatch(iftFileSet *fs_imgs, int first, int last, 
                 char *images_dir, char *model_dir, char *saliency_dir,
                 int initial_seeds, int nsuperpixels, int nLayers,
-                iftFLIMGraphFeature graph_feat, iftFLIMGraphType graph_type,
-                iftFLIMGraphAttention attention_opt, iftGFLIMStrideType stride_type,
+                iftGFLIMGraphFeature graph_feat, iftGFLIMGraphType graph_type,
+                iftGFLIMGraphAttention attention_opt, iftGFLIMStrideType stride_type,
                 iftGFLIMAggregationType aggregation_opt, bool kernel_removal,
                 iftGFLIMDecoderType decoder, iftFLIMArch *arch)
 {
-    iftFLIMGraphArray *input = NULL;
+    iftGFLIMGraphArray *input = NULL;
     int ngraphs_batch = last - first + 1;
     iftImageArray *label_imgs = iftCreateImageArray(ngraphs_batch);
     iftImageArray *label_imgs_0 = iftCreateImageArray(ngraphs_batch);
@@ -202,13 +202,13 @@ int main(int argc, char *argv[])
     char *model_dir = argv[2];
     iftFLIMArch *arch = iftReadFLIMArch(argv[3]);
     int nLayers = atoi(argv[4]);
-    iftFLIMGraphFeature graph_feat = iftGFLIMGetGraphFeature(argv[5]);
-    iftFLIMGraphType graph_type = iftGFLIMGetGraphType(argv[6]);
+    iftGFLIMGraphFeature graph_feat = iftGFLIMGetGraphFeature(argv[5]);
+    iftGFLIMGraphType graph_type = iftGFLIMGetGraphType(argv[6]);
     int nsuperpixels = atoi(argv[7]);
     iftGFLIMDecoderType decoder = iftGLFLIMGetDecoderType(argv[8]);
     int batchsize = atoi(argv[9]);
     iftGFLIMStrideType stride_type = iftGFLIMGetStrideType(argv[10]);
-    iftFLIMGraphAttention attention_opt = iftGLIMGraphGetAttentionType(argv[11]);
+    iftGFLIMGraphAttention attention_opt = iftGLIMGraphGetAttentionType(argv[11]);
     iftGFLIMAggregationType aggregation_opt = iftGLIMGraphGetAggregationType(argv[12]);
     bool kernel_removal = atoi(argv[13]);
 

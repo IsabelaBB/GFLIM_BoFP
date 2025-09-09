@@ -4,7 +4,7 @@
  */
 
 #include "iftCommon.h"
-#include "iftFLIMGraph.h"
+#include "iftGFLIMGraph.h"
 
 void usage()
 {
@@ -13,8 +13,8 @@ void usage()
     printf("P1: images diretory \n");
     printf("P2: number of superpixels \n");
     printf("P3: model folder \n");
-    printf("P4: Graph feature (MEAN, SUM, SUM_MULT_RELSIZE, SUM_CONCAT_RELSIZE). See iftFLIMGraphFeature at iftGFLIMGraph.h for details \n");
-    printf("P5: superpixel method (DISF, ERGC). See iftFLIMGraphType at iftGFLIMGraph.h for details \n");
+    printf("P4: Graph feature (MEAN, SUM, SUM_MULT_RELSIZE, SUM_CONCAT_RELSIZE). See iftGFLIMGraphFeature at iftGFLIMGraph.h for details \n");
+    printf("P5: superpixel method (DISF, ERGC). See iftGFLIMGraphType at iftGFLIMGraph.h for details \n");
     printf("P6: number of initial seeds (only used when P5=DISF) \n");
 }
 
@@ -34,8 +34,8 @@ int main(int argc, char *argv[])
     char *images_dir = argv[1];
     int final_spx = atoi(argv[2]);
     char *model_dir = argv[3];
-    iftFLIMGraphFeature graph_feat = iftGFLIMGetGraphFeature(argv[4]);
-    iftFLIMGraphType spx_method = iftGFLIMGetGraphType(argv[5]);
+    iftGFLIMGraphFeature graph_feat = iftGFLIMGetGraphFeature(argv[4]);
+    iftGFLIMGraphType spx_method = iftGFLIMGetGraphType(argv[5]);
 
     int initial_seeds = 0;
     if (spx_method == IFT_FLIMGRAPH_TYPE_DISF)
@@ -79,7 +79,7 @@ int main(int argc, char *argv[])
         iftImage *label_img;
         iftImage *img = iftReadImageByExt(fs_imgs->files[i]->path);
 
-        iftFLIMGraph *graph = iftImageToFLIMGraph(img, final_spx, initial_seeds, &label_img, graph_feat, spx_method);
+        iftGFLIMGraph *graph = iftImageToFLIMGraph(img, final_spx, initial_seeds, &label_img, graph_feat, spx_method);
 
         sprintf(filename, "%s/%s.pgm", labels_dir, basename);
         iftWriteImageByExt(label_img, filename);

@@ -101,7 +101,7 @@ verifyArgs(args)
 
 with open(args.arch_file) as f:
     data = json.load(f)
-    kernel_size = data['layer1']['conv']['kernel_size'][0]*data['layer1']['conv']['kernel_size'][1]
+    kernel_size = data['layer1']['conv']['kernel_size']
     nfeat_markers = data['layer1']['conv']["nkernels_per_marker"]
 
 

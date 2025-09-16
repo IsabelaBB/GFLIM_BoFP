@@ -8,12 +8,12 @@
  */
 
 iftMatrix *iftGFLIMUCreateLayerModel(iftGFLIMGraph *graph, iftLabeledSet *S,
-                                    iftFLIMLayer layer, float stdev_factor,
+                                    iftGFLIMLayer layer, float stdev_factor,
                                     float **bias, int **truelabel,
                                     iftGFLIMGraphAttention attention_opt,
                                     iftGFLIMAggregationType aggregation_opt)
 {
-    iftDataSet *Z = iftGFLIMExtractLabelDataSet(graph, S, layer.kernel_size[0] * layer.kernel_size[1], attention_opt, aggregation_opt);
+    iftDataSet *Z = iftGFLIMExtractLabelDataSet(graph, S, layer.kernel_size, attention_opt, aggregation_opt);
 
 #ifdef PRINT_VALS
     printf("Dataset %s\n", basename);
@@ -199,7 +199,7 @@ int main(int argc, char *argv[])
     tstart = iftTic();
 
     char *model_dir = argv[1];
-    iftFLIMArch *arch = iftReadFLIMArch(argv[2]);
+    iftGFLIMArch *arch = iftReadGFLIMArch(argv[2]);
     int layer = atoi(argv[3]);
     iftGFLIMGraphAttention attention_opt = iftGLIMGraphGetAttentionType(argv[4]);
     iftGFLIMAggregationType aggregation_opt = iftGLIMGraphGetAggregationType(argv[5]);
@@ -342,7 +342,7 @@ int main(int argc, char *argv[])
     }
 
     iftDestroyFileSet(&fs);
-    iftDestroyFLIMArch(&arch);
+    iftDestroyGFLIMArch(&arch);
     iftFree(filename);
 
     char *time = iftFormattedTime(iftCompTime(tstart, iftToc()));

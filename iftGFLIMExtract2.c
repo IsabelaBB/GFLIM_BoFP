@@ -5,7 +5,7 @@
  * \brief Extract features from a set of images and decode from a GFLIM or a GFLIM-BoFP trained model.
  */
 
-void validateArgs(char *images_dir, char *model_dir, iftFLIMArch *arch, int nLayers, 
+void validateArgs(char *images_dir, char *model_dir, iftGFLIMArch *arch, int nLayers, 
                   int batchsize, 
                   int argc, char *argv[])
 {
@@ -31,7 +31,7 @@ void ProcessBatch(iftFileSet *fs_imgs, int first, int last,
                 int nLayers,
                 iftGFLIMGraphAttention attention_opt, iftGFLIMStrideType stride_type,
                 iftGFLIMAggregationType aggregation_opt, bool kernel_removal,
-                iftFLIMArch *arch)
+                iftGFLIMArch *arch)
 {
     int ngraphs_batch = last - first + 1;
     iftImageArray *label_imgs = iftCreateImageArray(ngraphs_batch);
@@ -186,7 +186,7 @@ int main(int argc, char *argv[])
     char *graphs_dir = argv[2];
     char *labels_dir = argv[3];
     char *model_dir = argv[4];
-    iftFLIMArch *arch = iftReadFLIMArch(argv[5]);
+    iftGFLIMArch *arch = iftReadGFLIMArch(argv[5]);
     int nLayers = atoi(argv[6]);
     int batchsize = atoi(argv[7]);
     iftGFLIMStrideType stride_type = iftGFLIMGetStrideType(argv[8]);
@@ -236,7 +236,7 @@ int main(int argc, char *argv[])
     }
 
     iftDestroyFileSet(&fs_imgs);
-    iftDestroyFLIMArch(&arch);
+    iftDestroyGFLIMArch(&arch);
 
     char *time = iftFormattedTime(iftCompTime(tstart, iftToc()));
     printf("Done ... %s\n", time);

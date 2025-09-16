@@ -134,7 +134,7 @@ if(args.layer == 1):
 
         with open(args.arch_file) as f:
             data = json.load(f)
-            kernel_size = data['layer1']['conv']['kernel_size'][0]*data['layer1']['conv']['kernel_size'][1]
+            kernel_size = data['layer1']['conv']['kernel_size']
             nfeat_markers = data['layer1']['conv']["nkernels_per_marker"]
 
         CallFunction(functions['CreateGraph'], [args.img_dir, args.final_spx, args.model_dir, args.graph_feat, args.spx_alg, args.init_seeds], 'Creating graphs:\t\t')

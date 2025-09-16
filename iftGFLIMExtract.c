@@ -3,9 +3,10 @@
 /**
  * \file iftGFLIMExtract.c
  * \brief Extract features from a set of images and decode from a GFLIM or a GFLIM-BoFP trained model.
+ * \warning This does not support skip connections.
  */
 
-void validateArgs(char *images_dir, char *model_dir, iftFLIMArch *arch, int nLayers, 
+void validateArgs(char *images_dir, char *model_dir, iftGFLIMArch *arch, int nLayers, 
                   iftGFLIMGraphType graph_type, int nsuperpixels, int batchsize, 
                   int argc, char *argv[], int *initial_seeds)
 {
@@ -45,7 +46,7 @@ void ProcessBatch(iftFileSet *fs_imgs, int first, int last,
                 iftGFLIMGraphFeature graph_feat, iftGFLIMGraphType graph_type,
                 iftGFLIMGraphAttention attention_opt, iftGFLIMStrideType stride_type,
                 iftGFLIMAggregationType aggregation_opt, bool kernel_removal,
-                iftGFLIMDecoderType decoder, iftFLIMArch *arch)
+                iftGFLIMDecoderType decoder, iftGFLIMArch *arch)
 {
     iftGFLIMGraphArray *input = NULL;
     int ngraphs_batch = last - first + 1;
@@ -200,7 +201,7 @@ int main(int argc, char *argv[])
 
     char *images_dir = argv[1];
     char *model_dir = argv[2];
-    iftFLIMArch *arch = iftReadFLIMArch(argv[3]);
+    iftGFLIMArch *arch = iftReadGFLIMArch(argv[3]);
     int nLayers = atoi(argv[4]);
     iftGFLIMGraphFeature graph_feat = iftGFLIMGetGraphFeature(argv[5]);
     iftGFLIMGraphType graph_type = iftGFLIMGetGraphType(argv[6]);
@@ -289,7 +290,7 @@ int main(int argc, char *argv[])
     }
 
     iftDestroyFileSet(&fs_imgs);
-    iftDestroyFLIMArch(&arch);
+    iftDestroyGFLIMArch(&arch);
 
     char *time = iftFormattedTime(iftCompTime(tstart, iftToc()));
     printf("Done ... %s\n", time);

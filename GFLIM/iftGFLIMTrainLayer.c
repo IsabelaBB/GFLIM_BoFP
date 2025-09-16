@@ -21,7 +21,7 @@ int main(int argc, char *argv[])
     tstart = iftTic();
     
     char *model_dir = argv[1];
-    iftFLIMArch *arch = iftReadFLIMArch(argv[2]);
+    iftGFLIMArch *arch = iftReadGFLIMArch(argv[2]);
     int layer = atoi(argv[3]);
     char layer_input[200], layer_output[200], seeds_dir[200];
 
@@ -64,18 +64,16 @@ int main(int argc, char *argv[])
         }
     }
 
-    iftFLIMArch *save_arch = (iftFLIMArch *)iftAlloc(1, sizeof(iftFLIMArch));
+    iftGFLIMArch *save_arch = (iftGFLIMArch *)iftAlloc(1, sizeof(iftGFLIMArch));
     save_arch->nlayers = 1;
     save_arch->stdev_factor = arch->stdev_factor;
     save_arch->apply_intrinsic_atrous = arch->apply_intrinsic_atrous;
-    save_arch->layer = (iftFLIMLayer *)iftAlloc(1, sizeof(iftFLIMLayer));
+    save_arch->layer = (iftGFLIMLayer *)iftAlloc(1, sizeof(iftGFLIMLayer));
 
-    for (int i = 0; i < 3; i++)
-    {
-        save_arch->layer[0].kernel_size[i] = arch->layer[layer - 1].kernel_size[i];
-        save_arch->layer[0].dilation_rate[i] = arch->layer[layer - 1].dilation_rate[i];
-        save_arch->layer[0].pool_size[i] = arch->layer[layer - 1].pool_size[i];
-    }
+    save_arch->layer[0].kernel_size = arch->layer[layer - 1].kernel_size;
+    save_arch->layer[0].dilation_rate = arch->layer[layer - 1].dilation_rate;
+    save_arch->layer[0].pool_size = arch->layer[layer - 1].pool_size;
+    
     save_arch->layer[0].nkernels_per_image = arch->layer[layer - 1].nkernels_per_image;
     save_arch->layer[0].nkernels_per_marker = arch->layer[layer - 1].nkernels_per_marker;
     save_arch->layer[0].noutput_channels = arch->layer[layer - 1].noutput_channels;
@@ -84,13 +82,13 @@ int main(int argc, char *argv[])
     save_arch->layer[0].pool_type = iftAllocCharArray(strlen(arch->layer[layer - 1].pool_type) + 1);
     strcpy(save_arch->layer[0].pool_type, arch->layer[layer - 1].pool_type);
     save_arch->layer[0].pool_stride = arch->layer[layer - 1].pool_stride;
-    iftDestroyFLIMArch(&arch);
+    iftDestroyGFLIMArch(&arch);
     
     char param_dir[255];
     sprintf(param_dir, "%s/model", model_dir);
     iftGFLIMTrainLayer(layer_input, seeds_dir, param_dir, layer, save_arch, layer_output);
 
-    iftDestroyFLIMArch(&save_arch);
+    iftDestroyGFLIMArch(&save_arch);
 
     char *time = iftFormattedTime(iftCompTime(tstart, iftToc()));
     printf("Done ... %s\n", time);

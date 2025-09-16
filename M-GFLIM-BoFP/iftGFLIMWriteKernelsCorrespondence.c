@@ -33,7 +33,7 @@ int main(int argc, char *argv[]) {
     if(fs->n < 1)
       iftError("No files found in the markers directory: %s", "main", markers_folder_0);
 
-    if (!iftDirExists(save_markers_folder))
+    if (save_markers_folder != NULL && !iftDirExists(save_markers_folder))
         iftMakeDir(save_markers_folder);
 
     // Count the number of seed in scale 0
@@ -47,7 +47,7 @@ int main(int argc, char *argv[]) {
         iftFree(basename);
     }
 
-    iftIntArray *kernel_map = iftCreateIntArray(nseeds);
+    iftIntArray *kernel_map = iftCreateIntArray(nseeds+1);
     int last_kernel = 0;
     for (int i = 0; i < fs->n; i++)
     {

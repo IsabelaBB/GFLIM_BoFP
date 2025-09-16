@@ -10,14 +10,14 @@
 
 iftGFLIMGraph *iftGFLIMUEncodeLayer(iftGFLIMGraph *graph,
                                   iftMatrix *Kernels, float *bias,
-                                  iftFLIMLayer layer, 
+                                  iftGFLIMLayer layer, 
                                   iftGFLIMGraphAttention attention_opt, 
                                   int *kernel_labels,
                                   iftGFLIMAggregationType aggregation_opt,
                                   bool reduce)
 {
 
-    iftMImage *activ = iftGFLIMConvLayer(graph, Kernels, layer.kernel_size[0] * layer.kernel_size[1], attention_opt, kernel_labels, aggregation_opt, reduce);
+    iftMImage *activ = iftGFLIMConvLayer(graph, Kernels, layer.kernel_size, attention_opt, kernel_labels, aggregation_opt, reduce);
 
     iftMImage *activ_relu = NULL;
     if (layer.relu)
@@ -65,7 +65,7 @@ int main(int argc, char *argv[])
     tstart = iftTic();
 
     char *model_dir = argv[1];
-    iftFLIMArch *arch = iftReadFLIMArch(argv[2]);
+    iftGFLIMArch *arch = iftReadGFLIMArch(argv[2]);
     int layer = atoi(argv[3]);
     iftGFLIMGraphAttention attention_opt = iftGLIMGraphGetAttentionType(argv[4]);
     iftGFLIMAggregationType aggregation_opt = iftGLIMGraphGetAggregationType(argv[5]);
@@ -141,7 +141,7 @@ int main(int argc, char *argv[])
 
         // pooling
         if(strcmp(arch->layer[layer - 1].pool_type, "no_pool") != 0){
-            iftGFLIMPoolingLayer(conv_graph, arch->layer[layer - 1].pool_type, arch->layer[layer - 1].pool_size[0] * arch->layer[layer - 1].pool_size[1], 1);
+            iftGFLIMPoolingLayer(conv_graph, arch->layer[layer - 1].pool_type, arch->layer[layer - 1].pool_size, 1);
         }
             
         /* stride model */
@@ -177,7 +177,7 @@ int main(int argc, char *argv[])
     iftFree(bias_merged);
     iftFree(filename);
     iftDestroyFileSet(&fs);
-    iftDestroyFLIMArch(&arch);
+    iftDestroyGFLIMArch(&arch);
     char *time = iftFormattedTime(iftCompTime(tstart, iftToc()));
     printf("Done ... %s\n", time);
     iftFree(time);

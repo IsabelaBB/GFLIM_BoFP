@@ -25,7 +25,7 @@ int main(int argc, char *argv[])
     tstart = iftTic();
 
     char *model_dir = argv[1];
-    iftFLIMArch *arch = iftReadFLIMArch(argv[2]);
+    iftGFLIMArch *arch = iftReadGFLIMArch(argv[2]);
     int layer = atoi(argv[3]);
     int batchsize = atoi(argv[4]);
     iftGFLIMStrideType stride_type = iftGFLIMGetStrideType(argv[5]);
@@ -159,7 +159,7 @@ int main(int argc, char *argv[])
     iftFree(bias_merged);
     iftFree(filename);
     iftDestroyFileSet(&fs);
-    iftDestroyFLIMArch(&arch);
+    iftDestroyGFLIMArch(&arch);
     char *time = iftFormattedTime(iftCompTime(tstart, iftToc()));
     printf("Done ... %s\n", time);
     iftFree(time);

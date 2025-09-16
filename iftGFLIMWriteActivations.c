@@ -84,12 +84,12 @@ void validateArgs(char *model_dir, int layer, char *input_dir, char *labels_dir,
 
 int main(int argc, char *argv[])
 {
-    if (argc != 3)
+    if (argc != 3 && argc != 4)
     {
-        iftError("Usage: iftGFLIMWriteActivations <P1> <P2> \n"
+        iftError("Usage: iftGFLIMWriteActivations <P1> <P2> [<P3>]\n"
                  "[1] model directory \n"
                  "[2] layer number (1, 2,..) \n"
-                 //"[3] --pca \n"
+                 "[3] skip connection (0: no skip, > 1: largest scale of skip) \n"
                  ,
                  "main");
     }
@@ -98,6 +98,18 @@ int main(int argc, char *argv[])
 
     char *model_dir = argv[1];
     int layer = atoi(argv[2]);
+    int skip = 0;
+
+    if (argc == 4)
+        skip = atoi(argv[3]);
+    else
+        skip = layer; // no skip
+
+    if (skip < 1){
+        iftError("Skip connection must be greater than 0", "main");
+    }
+
+
     // bool pca = false;
     /*if (argc == 4)
     {
@@ -126,8 +138,11 @@ int main(int argc, char *argv[])
     int *truelabels = NULL, nlabels = 0;
     int nkernels = 0 /*, nclasses = 0*/;
 
+    // if the skip connection is performed, the layer change to the first of the skip array in arch.
+    // Verify whether the skip was performed comparing the number of nodes
+
     // if (!pca){
-    sprintf(filename, "%s/model/conv%d-labels.txt", model_dir, layer);
+    sprintf(filename, "%s/model/conv%d-labels.txt", model_dir, skip);
     if (iftFileExists(filename)) // merged layer in GFLIM-BoFP
     {                            /* load merged model */
         truelabels = iftGFLIMLoadKernelLabels(filename, &nkernels);
@@ -205,7 +220,7 @@ int main(int argc, char *argv[])
         {
             // if(!pca) {
             sprintf(filename, "%s/model/%s-conv%d-labels.txt",
-                    model_dir, basename, layer);
+                    model_dir, basename, skip);
             if (iftFileExists(filename))
             { /* load image model */
                 truelabels = iftGFLIMLoadKernelLabels(filename, &nkernels);
@@ -216,7 +231,7 @@ int main(int argc, char *argv[])
               int k = 0;
               int nlabels = 1;
 
-              sprintf(filename, "%s/model/%s-conv%d-%d", model_dir, basename, layer, nlabels);
+              sprintf(filename, "%s/model/%s-conv%d-%d", model_dir, basename, skip, nlabels);
               while (nlabels <= nclasses && iftFileExists(filename))
               {
                 int nkernelsClass = 0;
@@ -225,7 +240,7 @@ int main(int argc, char *argv[])
                   truelabels[k] = nlabels;
                 iftFree(bias);
                 nlabels++;
-                sprintf(filename, "%s/model/%s-conv%d-%d", model_dir, basename, layer, nlabels);
+                sprintf(filename, "%s/model/%s-conv%d-%d", model_dir, basename, skip, nlabels);
               }
               nlabels--;
             }*/

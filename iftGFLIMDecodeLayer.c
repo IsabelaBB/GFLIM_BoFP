@@ -82,7 +82,7 @@ int main(int argc, char *argv[])
 
     char *model_dir = argv[1];
     int layer = atoi(argv[2]);
-    iftFLIMArch *arch = iftReadFLIMArch(argv[3]);
+    iftGFLIMArch *arch = iftReadGFLIMArch(argv[3]);
     iftGFLIMDecoderType decoder = iftGLFLIMGetDecoderType(argv[4]);
     iftGFLIMStrideType stride_type = iftGFLIMGetStrideType(argv[5]);
 
@@ -96,6 +96,15 @@ int main(int argc, char *argv[])
 
     if(!iftDirExists(output_dir))
         iftMakeDir(output_dir);
+
+    // if there are skip connections, find the fist skip connection layer
+    int layer_skip = layer;
+    for(int i = 0; i < layer; i++){
+        if(arch->layer[layer-1].skip_connection[i] > 0){
+            layer_skip = i+1;
+            break;
+        }
+    }
 
     char *filename = iftAllocCharArray(512);
     char sal_dir[512];
@@ -171,7 +180,7 @@ int main(int argc, char *argv[])
     }
     iftFree(filename);
     iftDestroyFileSet(&fs);
-    iftDestroyFLIMArch(&arch);
+    iftDestroyGFLIMArch(&arch);
     char *time = iftFormattedTime(iftCompTime(tstart, iftToc()));
     printf("Done ... %s\n", time);
     iftFree(time);

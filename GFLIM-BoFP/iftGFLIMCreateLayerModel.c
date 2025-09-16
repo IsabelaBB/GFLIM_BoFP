@@ -24,7 +24,7 @@ int main(int argc, char *argv[])
     tstart = iftTic();
 
     char *model_dir = argv[1];
-    iftFLIMArch *arch = iftReadFLIMArch(argv[2]);
+    iftGFLIMArch *arch = iftReadGFLIMArch(argv[2]);
     int layer = atoi(argv[3]);
     iftGFLIMStrideType stride_type = iftGFLIMGetStrideType(argv[4]);
     iftGFLIMGraphAttention attention_opt = iftGLIMGraphGetAttentionType(argv[5]);
@@ -109,7 +109,7 @@ int main(int argc, char *argv[])
     }
 
     iftDestroyFileSet(&fs);
-    iftDestroyFLIMArch(&arch);
+    iftDestroyGFLIMArch(&arch);
     iftFree(filename);
 
     char *time = iftFormattedTime(iftCompTime(tstart, iftToc()));

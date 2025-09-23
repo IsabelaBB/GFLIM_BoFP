@@ -10,20 +10,22 @@ void validateArgs(char *images_dir, char *model_dir, iftGFLIMArch *arch, int nLa
                   int argc, char *argv[])
 {
     if (nLayers < 1)
-        iftError("Invalid number of layers: %d", "main", nLayers);
+        iftError("Invalid number of layers: %d", __func__, nLayers);
 
     if (nLayers > arch->nlayers)
-        iftError("Invalid number of layers: %d", "main", nLayers);
+        iftError("Invalid number of layers: %d", __func__, nLayers);
 
     if (!iftDirExists(images_dir))
-        iftError("Images directory does not exist", "main");
+        iftError("Images directory does not exist", __func__);
 
     if (!iftDirExists(model_dir))
-        iftError("Model directory does not exist", "main");
-    
+        iftError("Model directory does not exist", __func__);
+
     if (batchsize < 1)
-        iftError("Invalid batch size: %d", "main", batchsize);
+        iftError("Invalid batch size: %d", __func__, batchsize);
 }
+
+
 
 void ProcessBatch(iftFileSet *fs_imgs, int first, int last, 
                 char *graphs_dir, char *labels_dir, 
@@ -50,7 +52,7 @@ void ProcessBatch(iftFileSet *fs_imgs, int first, int last,
         sprintf(filename, "%s/%s.pgm", labels_dir, basename);
         label_imgs->val[k] = iftReadImageByExt(filename); 
         iftFree(basename);
-    }   
+    } 
 
     /* For each layer do */
     for (int l = 0; l < nLayers; l++)
@@ -72,7 +74,7 @@ void ProcessBatch(iftFileSet *fs_imgs, int first, int last,
             /* Load kernel */
             sprintf(filename, "%s/model/conv%d-kernels.npy", model_dir, l + 1);
             if (!iftFileExists(filename))
-                iftError("Model file not found: %s", "encodeLayerBatch", filename);
+                iftError("Model file not found: %s", __func__, filename);
             Kmerged = iftReadMatrix(filename);
             int ninput_channels = input->val[0]->num_feats;
 
@@ -95,7 +97,7 @@ void ProcessBatch(iftFileSet *fs_imgs, int first, int last,
         {
             sprintf(filename, "%s/model/conv%d-labels.txt", model_dir, l + 1);
             if (!iftFileExists(filename))
-                iftError("File %s does not exist", "main", filename);
+                iftError("File %s does not exist", __func__, filename);
             int nkernels = 0;
             true_labels = iftGFLIMLoadKernelLabels(filename, &nkernels);
         }

@@ -29,8 +29,8 @@ int main(int argc, char *argv[])
     int layer = atoi(argv[3]);
     int batchsize = atoi(argv[4]);
     iftGFLIMStrideType stride_type = iftGFLIMGetStrideType(argv[5]);
-    iftGFLIMGraphAttention attention_opt = iftGLIMGraphGetAttentionType(argv[6]);
-    iftGFLIMAggregationType aggregation_opt = iftGLIMGraphGetAggregationType(argv[7]);
+    iftGFLIMGraphAttention attention_opt = iftGLIMGraphGetAttention(argv[6]);
+    iftGFLIMAggregation aggregation_opt = iftGLIMGraphGetAggregation(argv[7]);
     bool kernel_removal = false;
     if (argc == 9)
         kernel_removal = atoi(argv[8]);
@@ -90,14 +90,14 @@ int main(int argc, char *argv[])
         char **basename = (char **)calloc(last - first + 1, sizeof(char *));
 
         /* read graphs */
-        iftGFLIMGraphArray *input_graph = iftCreateEmptyFLIMGraphArray(last - first + 1);
+        iftGFLIMGraphArray *input_graph = iftCreateGFLIMGraphArray(last - first + 1);
         iftImageArray *label_imgs = iftCreateImageArray(last - first + 1);
         for (int j = 0; j < (last - first + 1); j++)
         {
             char ext[10];
             sprintf(ext, "%s", iftFileExt(fs->files[i + j]->path));
             basename[j] = iftFilename(fs->files[i + j]->path, ext);
-            input_graph->val[j] = iftReadFLIMGraph(fs->files[i + j]->path);
+            input_graph->val[j] = iftReadGFLIMGraph(fs->files[i + j]->path);
             sprintf(filename, "%s/%s.pgn", labels_dir, basename[j]);
             label_imgs->val[j] = iftReadImageByExt(filename);
         }
@@ -109,13 +109,13 @@ int main(int argc, char *argv[])
         for (int j = first; j <= last; j++)
         {
             sprintf(filename, "%s/%s.json", output_dir, basename[j - first]);
-            iftWriteFLIMGraph(input_graph->val[j - first], filename);
+            iftWriteGFLIMGraph(input_graph->val[j - first], filename);
             sprintf(filename, "%s/%s.pgm", out_labels_dir, basename[j - first]);
             iftWriteImageByExt(label_imgs->val[j - first], filename);
             iftFree(basename[j - first]);
         }
         iftFree(basename);
-        iftDestroyFLIMGraphArray(&input_graph);
+        iftDestroyGFLIMGraphArray(&input_graph);
         iftDestroyImageArray(&label_imgs);
     }
 
@@ -125,14 +125,14 @@ int main(int argc, char *argv[])
     {
         char **basename = (char **)calloc(last - first + 1, sizeof(char *));
         /* read graphs */
-        iftGFLIMGraphArray *input_graph = iftCreateEmptyFLIMGraphArray(last - first + 1);
+        iftGFLIMGraphArray *input_graph = iftCreateGFLIMGraphArray(last - first + 1);
         iftImageArray *label_imgs = iftCreateImageArray(last - first + 1);
         for (int j = 0; j < (last - first + 1); j++)
         {
             char ext[10];
             sprintf(ext, "%s", iftFileExt(fs->files[first + j]->path));
             basename[j] = iftFilename(fs->files[first + j]->path, ext);
-            input_graph->val[j] = iftReadFLIMGraph(fs->files[first + j]->path);
+            input_graph->val[j] = iftReadGFLIMGraph(fs->files[first + j]->path);
             sprintf(filename, "%s/%s.pgm", labels_dir, basename[j]);
             label_imgs->val[j] = iftReadImageByExt(filename);
         }
@@ -144,13 +144,13 @@ int main(int argc, char *argv[])
         for (int j = first; j <= last; j++)
         {
             sprintf(filename, "%s/%s.json", output_dir, basename[j - first]);
-            iftWriteFLIMGraph(input_graph->val[j - first], filename);
+            iftWriteGFLIMGraph(input_graph->val[j - first], filename);
             sprintf(filename, "%s/%s.pgm", out_labels_dir, basename[j - first]);
             iftWriteImageByExt(label_imgs->val[j - first], filename);
             iftFree(basename[j - first]);
         }
         iftFree(basename);
-        iftDestroyFLIMGraphArray(&input_graph);
+        iftDestroyGFLIMGraphArray(&input_graph);
         iftDestroyImageArray(&label_imgs);
     }
 

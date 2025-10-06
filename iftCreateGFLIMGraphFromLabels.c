@@ -12,7 +12,7 @@ void usage()
     printf("iftCreateGFLIMGraph <P1> <P2> <P3> <P4> \n");
     printf("P1: original images directory \n");
     printf("P2: superpixel images diretory \n");
-    printf("P3: Graph feature (MEAN, SUM, SUM_MULT_RELSIZE, SUM_CONCAT_RELSIZE). See iftGFLIMGraphFeature at iftGFLIMGraph.h for details \n");
+    printf("P3: Graph feature (MEAN, SUM, SUM_MULT_RELSIZE, SUM_CONCAT_RELSIZE). See iftGFLIMGraphNodeFeature at iftGFLIMGraph.h for details \n");
     printf("P4: graphs diretory \n");
     
 }
@@ -32,7 +32,7 @@ int main(int argc, char *argv[])
     timer *tstart = iftTic();
     char *images_dir = argv[1];
     char *spx_dir = argv[2];
-    iftGFLIMGraphFeature graph_feat = iftGFLIMGetGraphFeature(argv[3]);
+    iftGFLIMGraphNodeFeature graph_feat = iftGFLIMGraphGetNodeFeature(argv[3]);
     char *graphs_dir = argv[4];
     
 
@@ -118,32 +118,32 @@ int main(int argc, char *argv[])
         switch (graph_feat)
         {
         case IFT_FLIMGRAPH_FEATURE_MEAN:
-            graph = ComputeGraphFeatureMean(
+            graph = iftComputeGFLIMGraphFeaturesMean(
                         num_superpixels, A, mimg, 
                         label_img);
             break;
         case IFT_FLIMGRAPH_FEATURE_SUM:
-            graph = ComputeGraphFeatureSum(
+            graph = iftComputeGFLIMGraphFeaturesSum(
                         num_superpixels, A, mimg,
                         label_img);
             break;
         case IFT_FLIMGRAPH_FEATURE_SUM_MULT_RELSIZE:
-            graph = ComputeGraphFeatureSumMultRelsize(
+            graph = iftComputeGFLIMGraphFeaturesSumMultRelsize(
                         num_superpixels, A, mimg,
                         label_img); 
             break;
         case IFT_FLIMGRAPH_FEATURE_MEAN_MULT_RELSIZE:
-            graph = ComputeGraphFeatureMeanMultRelsize(
+            graph = iftComputeGFLIMGraphFeaturesMeanMultRelsize(
                         num_superpixels, A, mimg,
                         label_img);
             break;
         case IFT_FLIMGRAPH_FEATURE_MEAN_CONCAT_RELSIZE:
-            graph = ComputeGraphFeatureMeanConcatRelsize(
+            graph = iftComputeGFLIMGraphFeaturesMeanConcatRelsize(
                         num_superpixels, A, mimg,
                         label_img);
             break;
         case IFT_FLIMGRAPH_FEATURE_MEAN_CONCAT_RELSIZE_NEIGHB:
-            graph = ComputeGraphFeatureMeanConcatRelsizeNeighb(
+            graph = iftComputeGFLIMGraphFeaturesMeanConcatRelsizeNeighb(
                         num_superpixels, A, mimg,
                         label_img);
             break;
@@ -152,7 +152,7 @@ int main(int argc, char *argv[])
     #pragma omp parallel for
             for (int i = 0; i < mimg->n; i++)
                 gray_img->val[i] = mimg->val[i][0];
-            graph = ComputeGraphFeatureMeanConcatRelsizeHaralick(
+            graph = iftComputeGFLIMGraphFeaturesMeanConcatRelsizeHaralick(
                         num_superpixels, A, mimg,
                         label_img, NULL);
             break;
@@ -161,7 +161,7 @@ int main(int argc, char *argv[])
     #pragma omp parallel for
             for (int i = 0; i < mimg->n; i++)
                 gray_img->val[i] = mimg->val[i][0];
-            graph = ComputeGraphFeatureSumMultRelsizeConcatHaralick(
+            graph = iftComputeGFLIMGraphFeaturesSumMultRelsizeConcatHaralick(
                         num_superpixels, A, mimg,
                         label_img, NULL);
             break;
@@ -170,7 +170,7 @@ int main(int argc, char *argv[])
     #pragma omp parallel for
             for (int i = 0; i < mimg->n; i++)
                 gray_img->val[i] = mimg->val[i][0];
-            graph = ComputeGraphFeatureSumConcatHaralick(
+            graph = iftComputeGFLIMGraphFeaturesSumConcatHaralick(
                         num_superpixels, A, mimg,
                         label_img, graph_feat, NULL);
             break;
@@ -180,7 +180,7 @@ int main(int argc, char *argv[])
 
         sprintf(filename, "%s/%s.json", graphs_dir, basename);
         //printf("Writing graph at %s ...\n", filename);
-        iftWriteFLIMGraph(graph, filename);
+        iftWriteGFLIMGraph(graph, filename);
 
         if(gray_img != NULL)
         {
@@ -189,7 +189,7 @@ int main(int argc, char *argv[])
         iftDestroyAdjRel(&A);
         iftDestroyMImage(&mimg);
         iftDestroyImage(&label_img);
-        iftDestroyFLIMGraph(&graph);
+        iftDestroyGFLIMGraph(&graph);
         iftDestroyImage(&img);
         
         iftFree(basename);

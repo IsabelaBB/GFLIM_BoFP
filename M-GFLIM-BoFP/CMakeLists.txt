@@ -1,3 +1,6 @@
 add_executable(iftGFLIMWriteKernelsCorrespondence iftGFLIMWriteKernelsCorrespondence.c)
 target_link_libraries(iftGFLIMWriteKernelsCorrespondence ift)
 
+add_executable(iftGFLIMMergeScales iftGFLIMMergeScales.c)
+target_link_libraries(iftGFLIMMergeScales ift)
+

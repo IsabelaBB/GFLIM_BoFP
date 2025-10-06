@@ -46,7 +46,7 @@ int main(int argc, char *argv[])
     char *image_name = argv[5];
     int kernel_size = 0;
     iftGFLIMGraphAttention attention_opt = IFT_FLIMGRAPH_ATTENTION_NONE;
-    iftGFLIMAggregationType aggregation_opt = IFT_GFLIM_AGGREGATION_CONCAT;
+    iftGFLIMAggregation aggregation_opt = IFT_GFLIM_AGGREGATION_CONCAT;
     iftGFLIMDimReductionType dimReduction = IFT_GFLIM_DIMREDUCTION_NONE;
 
     if (nfpts_per_marker == 0 || nfpts_per_marker < -1)
@@ -59,8 +59,8 @@ int main(int argc, char *argv[])
         else
         {
             kernel_size = atoi(argv[6]);
-            attention_opt = iftGLIMGraphGetAttentionType(argv[7]);
-            aggregation_opt = iftGLIMGraphGetAggregationType(argv[8]);
+            attention_opt = iftGLIMGraphGetAttention(argv[7]);
+            aggregation_opt = iftGLIMGraphGetAggregation(argv[8]);
         }
     }
 
@@ -106,14 +106,14 @@ int main(int argc, char *argv[])
         sprintf(filename, "%s/%s.json", graph_dir, image_name);
         if (!iftFileExists(filename))
             iftError("Graph file %s does not exist", __func__, filename);
-        iftGFLIMGraph *graph = iftReadFLIMGraph(filename);
+        iftGFLIMGraph *graph = iftReadGFLIMGraph(filename);
 
         // perform a k-means per marker and reduce the number of seeds
         iftLabeledSet *T = iftGFLIMSelectClusterCenters(graph, graph_seeds, kernel_size, nfpts_per_marker, attention_opt, dimReduction, 1, aggregation_opt);
         iftDestroyLabeledSet(&graph_seeds);
         graph_seeds = T;
         T = NULL;
-        iftDestroyFLIMGraph(&graph);
+        iftDestroyGFLIMGraph(&graph);
     }
 
     // remove the kernels from the graph_seeds

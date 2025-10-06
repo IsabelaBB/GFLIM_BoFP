@@ -27,8 +27,8 @@ int main(int argc, char *argv[])
     iftGFLIMArch *arch = iftReadGFLIMArch(argv[2]);
     int layer = atoi(argv[3]);
     iftGFLIMStrideType stride_type = iftGFLIMGetStrideType(argv[4]);
-    iftGFLIMGraphAttention attention_opt = iftGLIMGraphGetAttentionType(argv[5]);
-    iftGFLIMAggregationType aggregation_opt = iftGLIMGraphGetAggregationType(argv[6]);
+    iftGFLIMGraphAttention attention_opt = iftGLIMGraphGetAttention(argv[5]);
+    iftGFLIMAggregation aggregation_opt = iftGLIMGraphGetAggregation(argv[6]);
 
     char graph_dir[200], labels_dir[200];
 
@@ -67,11 +67,11 @@ int main(int argc, char *argv[])
         if(S == NULL) continue;
         
         char *basename = iftFilename(fs->files[i]->path, "-seeds_graph.txt");
-
+        
         // read the graph
         sprintf(filename, "%s/%s%s", graph_dir, basename, ".json");
         if(!iftFileExists(filename)) iftError("Graph file %s does not exist", "main", filename);
-        iftGFLIMGraph *graph = iftReadFLIMGraph(filename);
+        iftGFLIMGraph *graph = iftReadGFLIMGraph(filename);
         
         // read the superpixel image for the first and current layer
         iftImage *label_img0 = NULL, *label_img = NULL;
@@ -102,7 +102,7 @@ int main(int argc, char *argv[])
         iftFree(truelabel);
         iftDestroyMatrix(&kernels);
         iftFree(basename);
-        iftDestroyFLIMGraph(&graph);
+        iftDestroyGFLIMGraph(&graph);
         iftDestroyLabeledSet(&S);
         iftDestroyImage(&label_img0);
         if(label_img != NULL) iftDestroyImage(&label_img);

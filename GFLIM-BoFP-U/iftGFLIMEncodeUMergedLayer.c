@@ -13,7 +13,7 @@ iftGFLIMGraph *iftGFLIMUEncodeLayer(iftGFLIMGraph *graph,
                                   iftGFLIMLayer layer, 
                                   iftGFLIMGraphAttention attention_opt, 
                                   int *kernel_labels,
-                                  iftGFLIMAggregationType aggregation_opt,
+                                  iftGFLIMAggregation aggregation_opt,
                                   bool reduce)
 {
 
@@ -42,7 +42,7 @@ iftGFLIMGraph *iftGFLIMUEncodeLayer(iftGFLIMGraph *graph,
     printf("\n");
 #endif
 
-    iftGFLIMGraph *output_graph = iftMImageToFLIMGraph(activ_relu, graph);
+    iftGFLIMGraph *output_graph = iftMImageToGFLIMGraph(activ_relu, graph);
     iftDestroyMImage(&activ_relu);
     
     return output_graph;
@@ -67,8 +67,8 @@ int main(int argc, char *argv[])
     char *model_dir = argv[1];
     iftGFLIMArch *arch = iftReadGFLIMArch(argv[2]);
     int layer = atoi(argv[3]);
-    iftGFLIMGraphAttention attention_opt = iftGLIMGraphGetAttentionType(argv[4]);
-    iftGFLIMAggregationType aggregation_opt = iftGLIMGraphGetAggregationType(argv[5]);
+    iftGFLIMGraphAttention attention_opt = iftGLIMGraphGetAttention(argv[4]);
+    iftGFLIMAggregation aggregation_opt = iftGLIMGraphGetAggregation(argv[5]);
     bool kernel_removal = false;
     if (argc == 7)
         kernel_removal = atoi(argv[6]);
@@ -124,19 +124,19 @@ int main(int argc, char *argv[])
         char *basename = iftFilename(fs->files[i]->path, ".json");
 
         // read the graph and superpixel image
-        iftGFLIMGraph *graph = iftReadFLIMGraph(fs->files[i]->path);
+        iftGFLIMGraph *graph = iftReadGFLIMGraph(fs->files[i]->path);
         iftImage *input_labels = NULL;
         sprintf(filename, "%s/%s.pgm", labels_dir, basename);
         input_labels = iftReadImageByExt(filename);
 
         /* conv + att + bias */
         iftGFLIMGraph *conv_graph = iftGFLIMUEncodeLayer(graph, Kmerged, bias_merged, arch->layer[layer - 1], attention_opt, true_labels, aggregation_opt, kernel_removal);
-        iftDestroyFLIMGraph(&graph);
+        iftDestroyGFLIMGraph(&graph);
 
         // save no pool graph to be used in skip connection
         if(arch->layer[layer - 1].pool_stride != 1){
             sprintf(filename, "%s/%s.json", noPool_dir, basename);
-            iftWriteFLIMGraph(conv_graph, filename);
+            iftWriteGFLIMGraph(conv_graph, filename);
         }
 
         // pooling
@@ -155,7 +155,7 @@ int main(int argc, char *argv[])
             for (int j = 0; j < input_labels->n; j++)
                 output_labels->val[j] = nodes_map[input_labels->val[j] - 1] + 1;
 
-            iftDestroyFLIMGraph(&conv_graph);
+            iftDestroyGFLIMGraph(&conv_graph);
             conv_graph = output_graph;
             iftDestroyImage(&input_labels);
             input_labels = output_labels;
@@ -167,8 +167,8 @@ int main(int argc, char *argv[])
         iftDestroyImage(&input_labels);
 
         sprintf(filename, "%s/%s.json", output_dir, basename);
-        iftWriteFLIMGraph(conv_graph, filename);
-        iftDestroyFLIMGraph(&conv_graph);
+        iftWriteGFLIMGraph(conv_graph, filename);
+        iftDestroyGFLIMGraph(&conv_graph);
         iftFree(basename);
     }
 

@@ -11,7 +11,7 @@ iftDataSet *iftGFLIMExtractMarkerDataSet_local(iftGFLIMGraph *graph,
                                          iftLabeledSet *S,
                                          int kernel_size,
                                          iftGFLIMGraphAttention attention_opt,
-                                         iftGFLIMAggregationType aggregation_opt,
+                                         iftGFLIMAggregation aggregation_opt,
                                          iftMatrix *neighbor_matrix)
 {
 #ifdef IFT_DEBUG
@@ -57,7 +57,7 @@ iftDataSet *iftGFLIMExtractMarkerDataSet_local(iftGFLIMGraph *graph,
         if (Z->sample[s].truelabel > Z->nclasses)
             Z->nclasses = Z->sample[s].truelabel;
 
-        iftIntArray *neighbors = iftGetKNeighborsFLIMGraph(seed->elem, graph, kernel_neighbors, 1, true, attention_opt);
+        iftIntArray *neighbors = iftFLIMGraphGetKNeighborsAggregation(seed->elem, graph, kernel_neighbors, 1, true, attention_opt);
         
         for(int i = 0; i < neighbors->n; i++) {
             iftMatrixElem(neighbor_matrix, i, s) = neighbors->val[i];
@@ -100,14 +100,14 @@ int main(int argc, char *argv[]) {
     int nfpts_per_marker = atoi(argv[3]);  
     int kernel_size = 0;
     iftGFLIMGraphAttention attention_opt = IFT_FLIMGRAPH_ATTENTION_NONE;
-    iftGFLIMAggregationType aggregation_opt = IFT_GFLIM_AGGREGATION_CONCAT;
+    iftGFLIMAggregation aggregation_opt = IFT_GFLIM_AGGREGATION_CONCAT;
     
     if(nfpts_per_marker < 0)
       iftError("Kernel size must be greater than 0: %d", __func__, nfpts_per_marker);
     
     kernel_size = atoi(argv[4]);
-    attention_opt = iftGLIMGraphGetAttentionType(argv[5]);
-    aggregation_opt = iftGLIMGraphGetAggregationType(argv[6]);
+    attention_opt = iftGLIMGraphGetAttention(argv[5]);
+    aggregation_opt = iftGLIMGraphGetAggregation(argv[6]);
     
     iftGFLIMDimReductionType dimReduction = IFT_GFLIM_DIMREDUCTION_NONE;
     int ncomponents = 1;
@@ -161,7 +161,7 @@ int main(int argc, char *argv[]) {
         // read the graph
         sprintf(filename, "%s/%s.json", graph_dir, basename);
         if(!iftFileExists(filename)) iftError("Graph file %s does not exist", __func__, filename);
-        iftGFLIMGraph *graph = iftReadFLIMGraph(filename);
+        iftGFLIMGraph *graph = iftReadGFLIMGraph(filename);
         
         int obj_label_map[graph->num_nodes];
         iftGFLIMRelabelConnectedComponentsInPlace(graph, graph_seeds, obj_label_map);
@@ -171,7 +171,7 @@ int main(int argc, char *argv[]) {
         iftDataSet *Z = iftGFLIMExtractMarkerDataSet_local(graph, graph_seeds, kernel_size, attention_opt, aggregation_opt, neighbor_matrix);
 
         iftDestroyLabeledSet(&graph_seeds);
-        iftDestroyFLIMGraph(&graph);
+        iftDestroyGFLIMGraph(&graph);
         
         // write the dataset
         sprintf(filename, "%s/%s-seeds_vectors.txt", out_dir, basename);

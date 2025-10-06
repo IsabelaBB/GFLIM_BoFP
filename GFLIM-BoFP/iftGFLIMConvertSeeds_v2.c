@@ -13,7 +13,7 @@
  * \param kernel_size The size of the kernel (number of neighbors) used to extract the features.
  * \param nclusters_per_marker The number of clusters per marker.
  * \param attention_opt The attention option to be used. @see iftGFLIMGraphAttention for more details.
- * \param aggregation_opt The aggregation strategy to be used. @see iftGFLIMAggregationType for more details.
+ * \param aggregation_opt The aggregation strategy to be used. @see iftGFLIMAggregation for more details.
  * \return The dataset with the seeds.
  */
 iftDataSet *iftGFLIMSelectClusterCenters_perGraph(iftGFLIMGraph *graph,
@@ -21,7 +21,7 @@ iftDataSet *iftGFLIMSelectClusterCenters_perGraph(iftGFLIMGraph *graph,
                                             int kernel_size,
                                             int nclusters_per_marker,
                                             iftGFLIMGraphAttention attention_opt,
-                                            iftGFLIMAggregationType aggregation_opt)
+                                            iftGFLIMAggregation aggregation_opt)
 {
 #ifdef IFT_DEBUG
   printf("%s \n", __func__);
@@ -187,8 +187,8 @@ int main(int argc, char *argv[]) {
     int nfpts_per_marker = atoi(argv[3]); 
     int kernel_size = atoi(argv[4]);
     int nfpts_per_label = atoi(argv[5]);
-    iftGFLIMGraphAttention attention_opt = iftGLIMGraphGetAttentionType(argv[6]);
-    iftGFLIMAggregationType aggregation_opt = iftGLIMGraphGetAggregationType(argv[7]);
+    iftGFLIMGraphAttention attention_opt = iftGLIMGraphGetAttention(argv[6]);
+    iftGFLIMAggregation aggregation_opt = iftGLIMGraphGetAggregation(argv[7]);
     
     if(!iftDirExists(model_dir))
       iftError("Model directory does not exist: %s", "main", model_dir);
@@ -228,7 +228,7 @@ int main(int argc, char *argv[]) {
         // read the graph
         sprintf(filename, "%s/%s.json", graph_dir, basename);
         if(!iftFileExists(filename)) iftError("Graph file %s does not exist", __func__, filename);
-        iftGFLIMGraph *graph = iftReadFLIMGraph(filename);
+        iftGFLIMGraph *graph = iftReadGFLIMGraph(filename);
 
         // convert image seeds to graph seeds
         iftLabeledSet *graph_seeds = iftGFLIMImageMarkersToGraphMarkers(label_img, S, IFT_GFLIM_NOSTRIDE, label_img->xsize, label_img->ysize);
@@ -240,7 +240,7 @@ int main(int argc, char *argv[]) {
         
         iftFree(basename);
         iftDestroyImage(&label_img);
-        iftDestroyFLIMGraph(&graph);
+        iftDestroyGFLIMGraph(&graph);
     }
 
     // perform a k-means per label on Z and select the seeds closest to the cluster centers

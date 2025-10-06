@@ -84,8 +84,9 @@ int main(int argc, char *argv[]) {
         iftIntArray *labels = iftCreateIntArray(nnodesi); 
         while (s != NULL) {
             int spxi = spx_map->val[s->elem];
-            int id = spx_id_map->val[spxi];
+            int id = spx_id_map->val[spxi]; // this superpixel created which kernel?
             last_kernel++;
+
             if(id == 0) // not visited spx
             {
                 spx_id_map->val[spxi] = last_kernel;
@@ -121,8 +122,10 @@ int main(int argc, char *argv[]) {
 
     // save the kernel correspondence
     FILE *fp = fopen(save_file, "a+");
-    for (int i = 1; i <= last_kernel; i++)
+    
+    for (int i = 1; i <= last_kernel; i++){
         fprintf(fp, "%d ", kernel_map->val[i]);
+    }
     fprintf(fp, "\n");
     fclose(fp);
     iftDestroyIntArray(&kernel_map);

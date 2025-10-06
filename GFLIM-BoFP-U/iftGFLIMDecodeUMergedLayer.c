@@ -13,7 +13,7 @@ iftGFLIMGraph *iftGFLIMUEncodeLayer(iftGFLIMGraph *graph,
                                   iftGFLIMLayer layer, 
                                   iftGFLIMGraphAttention attention_opt, 
                                   int *kernel_labels,
-                                  iftGFLIMAggregationType aggregation_opt,
+                                  iftGFLIMAggregation aggregation_opt,
                                   bool reduce)
 {
 
@@ -42,7 +42,7 @@ iftGFLIMGraph *iftGFLIMUEncodeLayer(iftGFLIMGraph *graph,
     printf("\n");
 #endif
 
-    iftGFLIMGraph *output_graph = iftMImageToFLIMGraph(activ_relu, graph);
+    iftGFLIMGraph *output_graph = iftMImageToGFLIMGraph(activ_relu, graph);
     iftDestroyMImage(&activ_relu);
     
     return output_graph;
@@ -97,7 +97,7 @@ iftGFLIMGraph *unpool(iftGFLIMGraph *input_graph, iftGFLIMGraph *skipConn_graph,
         new_nfeatures = iftMax(skipConn_graph->num_feats, new_nfeatures);
     }
     
-	iftGFLIMGraph *unpool_graph = iftCopyFLIMGraph(new_nfeatures, skipConn_graph, false); 
+	iftGFLIMGraph *unpool_graph = iftCopyGFLIMGraph(new_nfeatures, skipConn_graph, false); 
 	
 	for(int input_node=0; input_node < input_graph->num_nodes; input_node++)
 	{
@@ -163,8 +163,8 @@ int main(int argc, char *argv[])
     char *model_dir = argv[1];
     iftGFLIMArch *arch = iftReadGFLIMArch(argv[2]);
     int layer = atoi(argv[3]);
-    iftGFLIMGraphAttention attention_opt = iftGLIMGraphGetAttentionType(argv[4]);
-    iftGFLIMAggregationType aggregation_opt = iftGLIMGraphGetAggregationType(argv[5]);
+    iftGFLIMGraphAttention attention_opt = iftGLIMGraphGetAttention(argv[4]);
+    iftGFLIMAggregation aggregation_opt = iftGLIMGraphGetAggregation(argv[5]);
     int level = atoi(argv[6]); // indicate the depth of the layer that's being created
     bool kernel_removal = false;
     if (argc == 8)
@@ -246,32 +246,32 @@ int main(int argc, char *argv[])
         sprintf(filename, "%s/%s%s", input_graph_dir, basename, ".json");
         if (!iftFileExists(filename))
             iftError("Graph file %s does not exist", "main", filename);
-        iftGFLIMGraph *input_graph = iftReadFLIMGraph(filename);
+        iftGFLIMGraph *input_graph = iftReadGFLIMGraph(filename);
 
         // read the current graph
         sprintf(filename, "%s/%s%s", skipConn_graph_dir, basename, ".json");
         if (!iftFileExists(filename))
             iftError("Graph file %s does not exist", "main", filename);
-        iftGFLIMGraph *skipConn_graph = iftReadFLIMGraph(filename);
+        iftGFLIMGraph *skipConn_graph = iftReadGFLIMGraph(filename);
 
         // unpool and skip connection
         iftGFLIMGraph *unpool_graph = unpool(input_graph, skipConn_graph, label_dict, "sum");
         //iftGFLIMGraph *unpool_graph = skipConn_graph;
         printf("unpool nodes %ld\n", unpool_graph->num_nodes);
-        iftDestroyFLIMGraph(&skipConn_graph);
+        iftDestroyGFLIMGraph(&skipConn_graph);
         for(int i = 0; i < input_graph->num_nodes; i++)
             iftDestroySet(&label_dict[i]);
         iftFree(label_dict);
-        iftDestroyFLIMGraph(&input_graph);
+        iftDestroyGFLIMGraph(&input_graph);
 
         /* conv + att + bias */
         iftGFLIMGraph *conv_graph = iftGFLIMUEncodeLayer(unpool_graph, Kmerged, bias_merged, arch->layer[layer - 1], attention_opt, true_labels, aggregation_opt, kernel_removal);
-        iftDestroyFLIMGraph(&unpool_graph);
+        iftDestroyGFLIMGraph(&unpool_graph);
 
         /* save output */
         sprintf(filename, "%s/%s.json", output_graph_dir, basename);
-        iftWriteFLIMGraph(conv_graph, filename);
-        iftDestroyFLIMGraph(&conv_graph);
+        iftWriteGFLIMGraph(conv_graph, filename);
+        iftDestroyGFLIMGraph(&conv_graph);
         iftFree(basename);
     }
 

@@ -26,8 +26,8 @@ int main(int argc, char *argv[])
     iftGFLIMArch *arch = iftReadGFLIMArch(argv[2]);
     int layer = atoi(argv[3]);
     iftGFLIMStrideType stride_type = iftGFLIMGetStrideType(argv[4]);
-    iftGFLIMGraphAttention attention_opt = iftGLIMGraphGetAttentionType(argv[5]);
-    iftGFLIMAggregationType aggregation_opt = iftGLIMGraphGetAggregationType(argv[6]);
+    iftGFLIMGraphAttention attention_opt = iftGLIMGraphGetAttention(argv[5]);
+    iftGFLIMAggregation aggregation_opt = iftGLIMGraphGetAggregation(argv[6]);
     
     if (layer < 1)
         iftError("Invalid layer number: %d", "main", layer);
@@ -73,14 +73,14 @@ int main(int argc, char *argv[])
             iftFree(basename);
             continue;
         }
-        iftGFLIMGraph *graph = iftReadFLIMGraph(filename);
+        iftGFLIMGraph *graph = iftReadGFLIMGraph(filename);
 
         // check if there are kernels created from the graph
         sprintf(filename, "%s/model/%s-conv%d-kernels.npy", model_dir, basename, layer);
         if (!iftFileExists(filename)){
             iftWarning("File %s does not exist", "main", filename);
             iftFree(basename);
-            iftDestroyFLIMGraph(&graph);
+            iftDestroyGFLIMGraph(&graph);
             continue;
         }
         iftMatrix *K = iftReadMatrix(filename);
@@ -122,13 +122,13 @@ int main(int argc, char *argv[])
             iftDestroyImage(&input_labels);
         }
         sprintf(filename, "%s/%s.json", output_dir, basename);
-        iftWriteFLIMGraph(output_graph, filename);
-        iftDestroyFLIMGraph(&output_graph);
+        iftWriteGFLIMGraph(output_graph, filename);
+        iftDestroyGFLIMGraph(&output_graph);
 
         iftFree(basename);
         iftDestroyMatrix(&K);
         iftFree(bias);
-        iftDestroyFLIMGraph(&graph);
+        iftDestroyGFLIMGraph(&graph);
     }
 
     iftFree(filename);

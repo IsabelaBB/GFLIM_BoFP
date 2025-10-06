@@ -7,7 +7,7 @@
  */
 
 void validateArgs(char *images_dir, char *model_dir, iftGFLIMArch *arch, int nLayers, 
-                  iftGFLIMGraphType graph_type, int nsuperpixels, int batchsize, 
+                  iftGFLIMGraphSpxMethod graph_type, int nsuperpixels, int batchsize, 
                   int argc, char *argv[], int *initial_seeds)
 {
     if (nLayers < 1)
@@ -43,9 +43,9 @@ void validateArgs(char *images_dir, char *model_dir, iftGFLIMArch *arch, int nLa
 void ProcessBatch(iftFileSet *fs_imgs, int first, int last, 
                 char *images_dir, char *model_dir, char *saliency_dir,
                 int initial_seeds, int nsuperpixels, int nLayers,
-                iftGFLIMGraphFeature graph_feat, iftGFLIMGraphType graph_type,
+                iftGFLIMGraphNodeFeature graph_feat, iftGFLIMGraphSpxMethod graph_type,
                 iftGFLIMGraphAttention attention_opt, iftGFLIMStrideType stride_type,
-                iftGFLIMAggregationType aggregation_opt, bool kernel_removal,
+                iftGFLIMAggregation aggregation_opt, bool kernel_removal,
                 iftGFLIMDecoderType decoder, iftGFLIMArch *arch)
 {
     iftGFLIMGraphArray *input = NULL;
@@ -92,7 +92,7 @@ void ProcessBatch(iftFileSet *fs_imgs, int first, int last,
             /* Normalization (because there is no bias)*/
 #pragma omp parallel for
             for (int i = 0; i < input->n; i++)
-                iftNormalizeFLIMGraphByZScore(input->val[i], mean, stdev);
+                iftGFLIMGraphZNormalization(input->val[i], mean, stdev);
             iftFree(mean);
             iftFree(stdev);
         }
@@ -169,7 +169,7 @@ void ProcessBatch(iftFileSet *fs_imgs, int first, int last,
 
     iftDestroyImageArray(&label_imgs_0);
     iftDestroyImageArray(&label_imgs);
-    iftDestroyFLIMGraphArray(&input);
+    iftDestroyGFLIMGraphArray(&input);
     iftFree(truelabels);
 }
 
@@ -203,14 +203,14 @@ int main(int argc, char *argv[])
     char *model_dir = argv[2];
     iftGFLIMArch *arch = iftReadGFLIMArch(argv[3]);
     int nLayers = atoi(argv[4]);
-    iftGFLIMGraphFeature graph_feat = iftGFLIMGetGraphFeature(argv[5]);
-    iftGFLIMGraphType graph_type = iftGFLIMGetGraphType(argv[6]);
+    iftGFLIMGraphNodeFeature graph_feat = iftGFLIMGraphGetNodeFeature(argv[5]);
+    iftGFLIMGraphSpxMethod graph_type = iftGFLIMGraphGetSpxMethod(argv[6]);
     int nsuperpixels = atoi(argv[7]);
     iftGFLIMDecoderType decoder = iftGLFLIMGetDecoderType(argv[8]);
     int batchsize = atoi(argv[9]);
     iftGFLIMStrideType stride_type = iftGFLIMGetStrideType(argv[10]);
-    iftGFLIMGraphAttention attention_opt = iftGLIMGraphGetAttentionType(argv[11]);
-    iftGFLIMAggregationType aggregation_opt = iftGLIMGraphGetAggregationType(argv[12]);
+    iftGFLIMGraphAttention attention_opt = iftGLIMGraphGetAttention(argv[11]);
+    iftGFLIMAggregation aggregation_opt = iftGLIMGraphGetAggregation(argv[12]);
     bool kernel_removal = atoi(argv[13]);
 
     int initial_seeds = 0;
@@ -240,7 +240,7 @@ int main(int argc, char *argv[])
         break;
 
     case IFT_GFLIM_GRAPHADAPTIVE_DECODER:
-        sprintf(saliency_dir, "%s/graphadaptive_%d", model_dir, nLayers);
+        sprintf(saliency_dir, "%s/graph-adaptive_%d", model_dir, nLayers);
         break;
 
     case IFT_GFLIM_GAUSSIAN_DECODER:

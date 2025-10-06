@@ -5,7 +5,7 @@
  */
 
 void validateArgs(int layer, char *model_dir, iftGFLIMDecoderType decoder, iftGFLIMStrideType stride_type, 
-                char *input_dir, char *labels_dir, char *input_net_labels, char *output_dir)
+                char *input_dir, char *labels_dir, char *input_net_labels, int batchsize, char *output_dir)
 {
     if (layer < 1)
         iftError("Layer number must be greater than 0", "main");
@@ -32,6 +32,9 @@ void validateArgs(int layer, char *model_dir, iftGFLIMDecoderType decoder, iftGF
     if (!iftDirExists(input_net_labels))
         iftError("Labels directory input network does not exist: %s", "main", input_net_labels);
 
+    if (batchsize < 1)
+        iftError("Batch size must be greater than 0", "main");
+
     switch (decoder)
     {
     case IFT_GFLIM_TRISTATE_DECODER:
@@ -43,7 +46,7 @@ void validateArgs(int layer, char *model_dir, iftGFLIMDecoderType decoder, iftGF
         break;
 
     case IFT_GFLIM_GRAPHADAPTIVE_DECODER:
-        sprintf(output_dir, "%s/graphadaptive_%d", model_dir, layer);
+        sprintf(output_dir, "%s/graph-adaptive_%d", model_dir, layer);
         break;
 
     case IFT_GFLIM_GAUSSIAN_DECODER:
@@ -64,17 +67,97 @@ void validateArgs(int layer, char *model_dir, iftGFLIMDecoderType decoder, iftGF
     }
 }
 
+void ProcessBatch(iftFileSet *fs, int first, int last, 
+                char *model_dir, int layer, int layer_skip,
+                iftGFLIMArch *arch, 
+                iftGFLIMDecoderType decoder, 
+                iftGFLIMStrideType stride_type,
+                int nkernels, int *truelabels, int nlabels,
+                char *output_dir)
+{
+    int ngraphs_batch = last - first + 1;
+    iftImageArray *label_imgs = iftCreateImageArray(ngraphs_batch);
+    iftImageArray *label_imgs0 = iftCreateImageArray(ngraphs_batch);
+    iftGFLIMGraphArray *input = iftCreateGFLIMGraphArray(ngraphs_batch);
+
+    char **basenames = (char **)iftAlloc(ngraphs_batch, sizeof(char *));
+    for (int k = 0; k <= last - first; k++)
+    {
+        int i = k + first;
+        char ext[10], filename[512];
+        sprintf(ext, "%s", iftFileExt(fs->files[i]->path));
+        basenames[k] = iftFilename(fs->files[i]->path, ext);
+        sprintf(filename, "%s/layer%d/%s.json", model_dir, layer, basenames[k]);
+        input->val[k] = iftReadGFLIMGraph(filename);
+        sprintf(filename, "%s/labels%d/%s.pgm", model_dir, layer, basenames[k]);
+        label_imgs->val[k] = iftReadImageByExt(filename);
+        sprintf(filename, "%s/labels0/%s.pgm", model_dir, basenames[k]);
+        label_imgs0->val[k] = iftReadImageByExt(filename);
+    }
+
+    for (int k = 0; k <= last - first; k++)
+    {
+        iftImageArray *saliency = NULL;
+
+        if (decoder != IFT_GFLIM_TRISTATE_DECODER && nkernels == 0)
+        {
+            char filename[512];
+            int nkernels_i = 0, *truelabels_i = NULL, nlabels_i = 1;
+            sprintf(filename, "%s/model/%s-conv%d-labels.txt", model_dir, basenames[k], layer_skip);
+            if (iftFileExists(filename))
+            {
+                /* load image model */
+                nkernels_i = input->val[k]->num_feats; 
+                truelabels_i = iftGFLIMLoadKernelLabels(filename, &nkernels_i);
+                nlabels_i = iftGFLIMNumberOfTruelabels(truelabels_i, nkernels_i);
+            }
+            else iftError("File %s does not exist", "main", filename);
+
+            // decode the graph
+            saliency = iftGFLIMDecodeLayer(input->val[k], label_imgs->val[k], label_imgs0->val[k], truelabels_i, nlabels_i, decoder);
+            iftFree(truelabels_i);
+        }else{
+            // decode the graph
+            saliency = iftGFLIMDecodeLayer(input->val[k], label_imgs->val[k], label_imgs0->val[k], truelabels, nlabels, decoder);
+        }
+
+#pragma omp parallel for
+        /* post-process and save the salience maps */
+        for (int l = 0; l < saliency->n; l++)
+        {
+            char sal_dir[512], filename[512];
+            sprintf(sal_dir, "%s/label%d", output_dir, l + 1);
+            if (!iftDirExists(sal_dir)) iftMakeDir(sal_dir);
+
+            if (iftIs3DImage(label_imgs->val[k]))
+                sprintf(filename, "%s/%s.nii.gz", sal_dir, basenames[k]);
+            else
+                sprintf(filename, "%s/%s.png", sal_dir, basenames[k]);
+            iftWriteImageByExt(saliency->val[l], filename);
+        }
+        iftDestroyImageArray(&saliency);
+        iftFree(basenames[k]);
+    }
+
+    
+    iftDestroyImageArray(&label_imgs);
+    iftDestroyImageArray(&label_imgs0);
+    iftDestroyGFLIMGraphArray(&input);
+    iftFree(basenames);
+}
+
 
 int main(int argc, char *argv[])
 {
-    if (argc != 6)
+    if (argc != 7)
     {
-        iftError("Usage: iftGFLIMGSDecodeLayer <P1> <P2> <P3> <P4> <P5> \n"
+        iftError("Usage: iftGFLIMGSDecodeLayer <P1> <P2> <P3> <P4> <P5> <P6> \n"
                  "[1] model directory \n"
                  "[2] layer number (1, 2,..) \n"
                  "[3] architecture of the network\n"
-                 "[4] decoder type (tristate, hybrid, graph-adaptive, gaussian)"
-                 "[5] stride type (none, image-based, graph-based) \n",
+                 "[4] decoder type (tristate, hybrid, graph-adaptive, gaussian)\n"
+                 "[5] stride type (none, image-based, graph-based)\n"
+                 "[6] batch size \n",
                  "main");
     }
 
@@ -85,10 +168,11 @@ int main(int argc, char *argv[])
     iftGFLIMArch *arch = iftReadGFLIMArch(argv[3]);
     iftGFLIMDecoderType decoder = iftGLFLIMGetDecoderType(argv[4]);
     iftGFLIMStrideType stride_type = iftGFLIMGetStrideType(argv[5]);
+    int batchsize = atoi(argv[6]);
 
     char input_dir[200], labels_dir[200], input_net_labels[200], output_dir[200];
 
-    validateArgs(layer, model_dir, decoder, stride_type, input_dir, labels_dir, input_net_labels, output_dir);
+    validateArgs(layer, model_dir, decoder, stride_type, input_dir, labels_dir, input_net_labels, batchsize, output_dir);
 
     iftFileSet *fs = iftLoadFileSetFromDirBySuffix(input_dir, ".json", true);
     if (fs->n == 0)
@@ -106,79 +190,56 @@ int main(int argc, char *argv[])
         }
     }
 
-    char *filename = iftAllocCharArray(512);
-    char sal_dir[512];
+    int ngraphs = fs->n;
+    int nbatches = 0;
+    int nremaining_graphs = fs->n;
 
-    for (int i = 0; i < fs->n; i++)
+    batchsize = iftMin(batchsize, ngraphs);
+    nbatches = ngraphs / batchsize;
+    nremaining_graphs = nremaining_graphs - nbatches * batchsize;
+
+    int *truelabels = NULL, nlabels = 1, nkernels = 0;
+    char filename[512];
+    sprintf(filename, "%s/model/conv%d-labels.txt", model_dir, layer_skip);
+    if (decoder != IFT_GFLIM_TRISTATE_DECODER && iftFileExists(filename))
     {
-        char *basename = iftFilename(fs->files[i]->path, ".json");
+        // read one graph to get the number of kernels
+        iftGFLIMGraph *g = iftReadGFLIMGraph(fs->files[0]->path);
+        nkernels = g->num_feats; // number of kernels is the same for all graphs in the batch
+        iftDestroyGFLIMGraph(&g);
 
-        // load the graph and superpixel image
-        iftGFLIMGraph *graph = iftReadFLIMGraph(fs->files[i]->path);
-        sprintf(filename, "%s/%s.pgm", labels_dir, basename);
-        iftImage *label_img = iftReadImageByExt(filename);
-
-        // load the superpixel image of the input network
-        sprintf(filename, "%s/%s.pgm", input_net_labels, basename);
-        iftImage *input = iftReadImageByExt(filename);
-
-        int nkernels = graph->num_feats;
-        int *truelabels = NULL, nlabels = 1;
-        if (decoder != IFT_GFLIM_TRISTATE_DECODER)
-        {
-            sprintf(filename, "%s/model/conv%d-labels.txt", model_dir, layer);
-            if (iftFileExists(filename))
-            {
-                /* load merged model */
-                truelabels = iftGFLIMLoadKernelLabels(filename, &nkernels);
-                nlabels = iftGFLIMNumberOfTruelabels(truelabels, nkernels);
-            }
-            else
-            {
-                sprintf(filename, "%s/model/%s-conv%d-labels.txt",
-                        model_dir, basename, layer);
-                if (iftFileExists(filename))
-                {
-                    /* load image model */
-                    truelabels = iftGFLIMLoadKernelLabels(filename, &nkernels);
-                    nlabels = iftGFLIMNumberOfTruelabels(truelabels, nkernels);
-                }
-                else
-                {
-                    iftError("File %s does not exist", "main", filename);
-                }
-            }
-        }
-
-        // decode the graph
-        iftImageArray *saliency = iftGFLIMDecodeLayer(graph, label_img, input, truelabels, nlabels, decoder);
-
-        iftDestroyImage(&input);
-        iftDestroyFLIMGraph(&graph);
-        iftFree(truelabels);
-
-        /* post-process and save the salience maps */
-        for (int l = 0; l < saliency->n; l++)
-        {
-            sprintf(sal_dir, "%s/label%d", output_dir, l + 1);
-            if (!iftDirExists(sal_dir))
-                iftMakeDir(sal_dir);
-
-            if (iftIs3DImage(label_img))
-            {
-                sprintf(filename, "%s/%s.nii.gz", sal_dir, basename);
-            }
-            else
-            {
-                sprintf(filename, "%s/%s.png", sal_dir, basename);
-            }
-            iftWriteImageByExt(saliency->val[l], filename);
-        }
-        iftDestroyImage(&label_img);
-        iftFree(basename);
-        iftDestroyImageArray(&saliency);
+        /* load merged model */
+        truelabels = iftGFLIMLoadKernelLabels(filename, &nkernels);
+        nlabels = iftGFLIMNumberOfTruelabels(truelabels, nkernels);
     }
-    iftFree(filename);
+
+    for (int batch = 0; batch < nbatches; batch++)
+    {
+        int first = batch * batchsize, last = first + batchsize - 1;
+        printf("Processing batch %d of %d batches\r", batch + 1, nbatches);
+        fflush(stdout);
+
+        ProcessBatch(fs, first, last, 
+            model_dir, layer, layer_skip, arch, 
+            decoder, stride_type,
+            nkernels, truelabels, nlabels,
+            output_dir);
+    }
+
+    int first = ngraphs - nremaining_graphs, last = ngraphs - 1;
+    if (first <= last)
+    {
+        printf("Processing remaining %d images\r", last - first + 1);
+        fflush(stdout);
+
+        ProcessBatch(fs, first, last, 
+            model_dir, layer, layer_skip, arch, 
+            decoder, stride_type,
+            nkernels, truelabels, nlabels,
+            output_dir);
+    }
+    
+    if(nkernels == 0) iftFree(truelabels);
     iftDestroyFileSet(&fs);
     iftDestroyGFLIMArch(&arch);
     char *time = iftFormattedTime(iftCompTime(tstart, iftToc()));

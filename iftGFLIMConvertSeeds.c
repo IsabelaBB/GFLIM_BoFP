@@ -29,7 +29,7 @@ int main(int argc, char *argv[]) {
     int nfpts_per_marker = atoi(argv[3]);  
     int kernel_size = 0;
     iftGFLIMGraphAttention attention_opt = IFT_FLIMGRAPH_ATTENTION_NONE;
-    iftGFLIMAggregationType aggregation_opt = IFT_GFLIM_AGGREGATION_CONCAT;
+    iftGFLIMAggregation aggregation_opt = IFT_GFLIM_AGGREGATION_CONCAT;
     
     if(nfpts_per_marker == 0 || nfpts_per_marker < -1)
       iftError("Kernel size must be greater than 0: %d", __func__, nfpts_per_marker);
@@ -39,8 +39,8 @@ int main(int argc, char *argv[]) {
       if(argc != 7) iftError("Invalid number of arguments: %d", __func__, argc);
       else{
         kernel_size = atoi(argv[4]);
-        attention_opt = iftGLIMGraphGetAttentionType(argv[5]);
-        aggregation_opt = iftGLIMGraphGetAggregationType(argv[6]);
+        attention_opt = iftGLIMGraphGetAttention(argv[5]);
+        aggregation_opt = iftGLIMGraphGetAggregation(argv[6]);
       }
     }
 
@@ -104,14 +104,14 @@ int main(int argc, char *argv[]) {
           // read the graph
           sprintf(filename, "%s/%s.json", graph_dir, basename);
           if(!iftFileExists(filename)) iftError("Graph file %s does not exist", __func__, filename);
-          iftGFLIMGraph *graph = iftReadFLIMGraph(filename);
+          iftGFLIMGraph *graph = iftReadGFLIMGraph(filename);
           
           // perform a k-means per marker and reduce the number of seeds
           iftLabeledSet *T = iftGFLIMSelectClusterCenters(graph, graph_seeds, kernel_size, nfpts_per_marker, attention_opt, dimReduction, ncomponents, aggregation_opt);
           iftDestroyLabeledSet(&graph_seeds);
           graph_seeds = T;
           T = NULL;
-          iftDestroyFLIMGraph(&graph);
+          iftDestroyGFLIMGraph(&graph);
         }
         
         // write the graph-based seeds

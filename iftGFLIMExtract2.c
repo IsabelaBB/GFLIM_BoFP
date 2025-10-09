@@ -350,7 +350,7 @@ void ProcessBatch(iftFileSet *fs, int first, int last,
     // delete folders
     if(!save_intermediate)
     {
-        for (int layer = 0; layer <= nLayers; layer++)
+        for (int layer = 1; layer <= nLayers; layer++)
         {
             char dir[512];
             sprintf(dir, "%s/layer%d", model_dir, layer);
@@ -488,6 +488,12 @@ int main(int argc, char *argv[])
                      save_intermediate, layers_saveAct, layers_decode,
                      decoders, nDecoders, finer_layers);
     }
+
+    char dir[512];
+    sprintf(dir, "%s/layer0", model_dir);
+    iftRemoveDir(dir);
+    sprintf(dir, "%s/labels0", model_dir);
+    iftRemoveDir(dir);
 
     iftDestroyFileSet(&fs_imgs);
     iftDestroyGFLIMArch(&arch);

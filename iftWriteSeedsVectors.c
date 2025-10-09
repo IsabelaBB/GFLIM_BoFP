@@ -42,7 +42,7 @@ iftDataSet *iftGFLIMExtractMarkerDataSet_local(iftGFLIMGraph *graph,
     if(neighbor_matrix->ncols != kernel_neighbors)
         iftError("Neighbor matrix columns (%d) must match the number of neighbors (%d)", __func__, neighbor_matrix->ncols, kernel_neighbors);
 
-    int tensor_size = aggregation_opt == IFT_GFLIM_AGGREGATION_CONCAT ? graph->num_feats * kernel_neighbors : 2 * graph->num_feats;
+    int tensor_size = (aggregation_opt == IFT_GFLIM_AGGREGATION_CONCAT) || (aggregation_opt == IFT_GFLIM_AGGREGATION_WCONCAT) ? graph->num_feats * kernel_neighbors : 2 * graph->num_feats;
     iftDataSet *Z = iftCreateDataSet(nsamples, tensor_size);
 
     iftLabeledSet *seed;

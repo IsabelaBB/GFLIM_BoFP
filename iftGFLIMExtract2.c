@@ -73,30 +73,38 @@ iftGFLIMDecoderType *SplitDecoderList(char *str, int *nvalues)
 
 char *iftGFLIMDecoderToString(iftGFLIMDecoderType decoder)
 {
+    char *decoder_name = iftAllocCharArray(20);
     switch (decoder)
     {
     case IFT_GFLIM_TRISTATE_DECODER:
-        return "tristate";
-    
+        sprintf(decoder_name, "tristate");
+        break;
+
     case IFT_GFLIM_HYBRID_DECODER:
-        return "hybrid";
+        sprintf(decoder_name, "hybrid");
+        break;
 
     case IFT_GFLIM_GRAPHADAPTIVE_DECODER:
-        return "graph-adaptive";
+        sprintf(decoder_name, "graph-adaptive");
+        break;
 
     case IFT_GFLIM_GAUSSIAN_DECODER:
-        return "gaussian";
-    
+        sprintf(decoder_name, "gaussian");
+        break;
+
     case IFT_GFLIM_TEST_DECODER:
-        return "test";
-    
+        sprintf(decoder_name, "test");
+        break;
+
     case IFT_GFLIM_MEAN_DECODER:
-        return "mean";
+        sprintf(decoder_name, "mean");
+        break;
 
     default:
         iftError("Invalid decoder type: %d", __func__, decoder);
         return NULL;
     }
+    return decoder_name;
 }
 
 void ProcessBatch(iftFileSet *fs, int first, int last, 
@@ -130,6 +138,8 @@ void ProcessBatch(iftFileSet *fs, int first, int last,
     if(require_label_imgs0)
         label_imgs0 = iftCreateImageArray(ngraphs_batch);
     
+    /* load graphs and labels */
+    #pragma omp parallel for
     for (int k = 0; k <= last - first; k++)
     {
         int i = k + first;
@@ -295,7 +305,7 @@ void ProcessBatch(iftFileSet *fs, int first, int last,
                 iftFree(activations);
             }
         }
-    
+        
         // decode layer
         if(layers_decode[layer])
         {
@@ -340,10 +350,11 @@ void ProcessBatch(iftFileSet *fs, int first, int last,
                     }
                     iftDestroyImageArray(&saliency);
                 }
-                //iftFree(decoder_name);
+                
+                iftFree(decoder_name);
+                
             }
         }
-
         iftFree(true_labels);
     }
 
@@ -466,6 +477,7 @@ int main(int argc, char *argv[])
     for (int batch = 0; batch < nbatches; batch++)
     {
         int first = batch * batchsize, last = first + batchsize - 1;
+        printf("                                                        \r");
         printf("Processing batch %d of %d batches\r", batch + 1, nbatches);
         fflush(stdout);
 
@@ -479,6 +491,7 @@ int main(int argc, char *argv[])
     int first = ngraphs - nremaining_graphs, last = ngraphs - 1;
     if (first <= last)
     {
+        printf("                                                        \r");
         printf("Processing remaining %d images\r", last - first + 1);
         fflush(stdout);
 

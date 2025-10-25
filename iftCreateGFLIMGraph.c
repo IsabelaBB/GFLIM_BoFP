@@ -50,7 +50,7 @@ int main(int argc, char *argv[])
     printArgs(images_dir, final_spx, model_dir, graph_feat, spx_method, initial_seeds);
 #endif
 
-    char graphs_dir[200], labels_dir[200];
+    char graphs_dir[1024], labels_dir[1024];
     sprintf(graphs_dir, "%s/layer0", model_dir);
     sprintf(labels_dir, "%s/labels0", model_dir);
 
@@ -71,7 +71,7 @@ int main(int argc, char *argv[])
     for (int i = 0; i < fs_imgs->n; i++)
     {
         char *basename = NULL;
-        char filename[512], ext[10];
+        char filename[1024], ext[10];
 
         sprintf(ext, "%s", iftFileExt(fs_imgs->files[i]->path));
         basename = iftFilename(fs_imgs->files[i]->path, ext);

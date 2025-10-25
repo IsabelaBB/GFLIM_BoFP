@@ -51,7 +51,7 @@ int main(int argc, char *argv[]) {
     int last_kernel = 0;
     for (int i = 0; i < fs->n; i++)
     {
-        char filename[512];
+        char filename[1024];
         char *basename = iftFilename(fs->files[i]->path, "-seeds_graph.txt");
         
         iftLabeledSet *S0 = iftReadSeedsGraph(fs->files[i]->path);

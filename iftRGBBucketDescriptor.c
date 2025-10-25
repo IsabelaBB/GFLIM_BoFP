@@ -249,7 +249,7 @@ int main(int argc, char *argv[]) {
     for (int i = 0; i < fs_imgs->n; i++)
     {
         char *basename = NULL;
-        char filename[512], ext[10];
+        char filename[1024], ext[10];
         timer *tstart = iftTic();
 
         sprintf(ext, "%s", iftFileExt(fs_imgs->files[i]->path));

@@ -52,7 +52,7 @@ void ProcessBatch(iftFileSet *fs_imgs, int first, int last,
     int ngraphs_batch = last - first + 1;
     iftImageArray *label_imgs = iftCreateImageArray(ngraphs_batch);
     iftImageArray *label_imgs_0 = iftCreateImageArray(ngraphs_batch);
-    char filename[200];
+    char filename[1024];
 
     /* Create graphs */
     input = iftGFLIMImageToFLIMGraphBatch_v2(fs_imgs, first, last, initial_seeds, nsuperpixels, graph_feat, graph_type, label_imgs);
@@ -134,7 +134,7 @@ void ProcessBatch(iftFileSet *fs_imgs, int first, int last,
 
         iftImageArray *saliency = iftGFLIMDecodeLayer(input->val[k], label_imgs->val[k], label_imgs_0->val[k], truelabels, nlabels, decoder);
 
-        char tmp[400], out_file[512];
+        char tmp[1024], out_file[1024];
         /* post-process and save the salience maps */
         if (nlabels == 1)
         {
@@ -220,7 +220,7 @@ int main(int argc, char *argv[])
     int ngraphs = fs_imgs->n;
     int nbatches = 0;
     int nremaining_graphs = fs_imgs->n;
-    char saliency_dir[200];
+    char saliency_dir[1024];
 
     if (fs_imgs->n < 1)
         iftError("Image list is empty", __func__);

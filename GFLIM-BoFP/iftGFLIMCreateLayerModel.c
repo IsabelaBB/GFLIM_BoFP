@@ -30,14 +30,14 @@ int main(int argc, char *argv[])
     iftGFLIMGraphAttention attention_opt = iftGLIMGraphGetAttention(argv[5]);
     iftGFLIMAggregation aggregation_opt = iftGLIMGraphGetAggregation(argv[6]);
 
-    char graph_dir[200], labels_dir[200];
+    char graph_dir[1024], labels_dir[1024];
 
     if (layer < 1)
         iftError("Invalid layer number: %d", "main", layer);
     if(layer > arch->nlayers)
         iftError("Layer number %d is greater than the number of layers in the network (%d)", "main", layer, arch->nlayers);
 
-    char markers_dir[200];
+    char markers_dir[1024];
     sprintf(markers_dir, "%s/markers", model_dir);
     if (!iftDirExists(markers_dir))
         iftError("Image markers directory does not exist: %s", "main", markers_dir);

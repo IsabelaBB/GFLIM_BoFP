@@ -20,8 +20,8 @@ int main(int argc, char *argv[])
     char *model_dir = argv[1];
     int layer = atoi(argv[2]);
     
-    char *filename = iftAllocCharArray(512);
-    char input_dir[200];
+    char *filename = iftAllocCharArray(1024);
+    char input_dir[1024];
 
     sprintf(input_dir, "%s/layer%d", model_dir, layer-1);
     if(!iftDirExists(input_dir))

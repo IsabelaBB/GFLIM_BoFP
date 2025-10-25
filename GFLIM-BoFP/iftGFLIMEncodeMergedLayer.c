@@ -38,8 +38,8 @@ int main(int argc, char *argv[])
     if (layer > arch->nlayers)
         iftError("Invalid layer number: %d", "main", layer);
 
-    char input_dir[200], labels_dir[200], output_dir[200], out_labels_dir[200];
-    char *filename = iftAllocCharArray(512);
+    char input_dir[1024], labels_dir[1024], output_dir[1024], out_labels_dir[1024];
+    char *filename = iftAllocCharArray(1024);
 
     sprintf(input_dir, "%s/layer%d", model_dir, layer - 1);
     if (!iftDirExists(input_dir))

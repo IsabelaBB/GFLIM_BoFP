@@ -143,7 +143,7 @@ void ProcessBatch(iftFileSet *fs, int first, int last,
     for (int k = 0; k <= last - first; k++)
     {
         int i = k + first;
-        char ext[10], filename[512];
+        char ext[10], filename[1024];
         sprintf(ext, "%s", iftFileExt(fs->files[i]->path));
         basenames[k] = iftFilename(fs->files[i]->path, ext);
         sprintf(filename, "%s/%s.json", graphs_dir, basenames[k]);
@@ -163,7 +163,7 @@ void ProcessBatch(iftFileSet *fs, int first, int last,
         iftMatrix *Kmerged = NULL;
         float *bias_merged = NULL;
         int *true_labels = NULL;
-        char filename[512];
+        char filename[1024];
         int nkernels = 0;
         int nlabels = 1;
 
@@ -215,10 +215,13 @@ void ProcessBatch(iftFileSet *fs, int first, int last,
         iftFree(bias_merged);
 
         // process residual connections
-        sprintf(filename, "%s/model/kernels_map.txt", model_dir);
-        if (!iftFileExists(filename))
-            iftError("Model file not found: %s", __func__, filename);
-        iftGFLIMSkipConnectionBatch(input, label_imgs, fs, first, last, layer + 1, arch, filename, model_dir);
+        if(layer > 0)
+        {    
+            sprintf(filename, "%s/model/kernels_map.txt", model_dir);
+            if (!iftFileExists(filename))
+                iftError("Model file not found: %s", __func__, filename);
+            iftGFLIMSkipConnectionBatch(input, label_imgs, fs, first, last, layer + 1, arch, filename, model_dir);
+        }
 
         bool use_layer_skip = false;
         for(int i = layer + 1; i < nLayers; i++)
@@ -233,7 +236,7 @@ void ProcessBatch(iftFileSet *fs, int first, int last,
         // save intermediate graphs and labels
         if (save_intermediate || use_layer_skip)
         {
-            char dir[512];
+            char dir[1024];
             sprintf(dir, "%s/layer%d", model_dir, layer + 1);
             if(!iftDirExists(dir))
                 iftMakeDir(dir);
@@ -245,7 +248,7 @@ void ProcessBatch(iftFileSet *fs, int first, int last,
             #pragma omp parallel for
             for (int k = 0; k < ngraphs_batch; k++)
             {
-                char filename[512];
+                char filename[1024];
                 sprintf(filename, "%s/layer%d/%s.json", model_dir, layer + 1, basenames[k]);
                 iftWriteGFLIMGraph(input->val[k], filename);
                 sprintf(filename, "%s/labels%d/%s.pgm", model_dir, layer + 1, basenames[k]);
@@ -277,7 +280,7 @@ void ProcessBatch(iftFileSet *fs, int first, int last,
 
                 for (int label = 0; label < nlabels; label++)
                 {
-                    char act_dir[512];
+                    char act_dir[1024];
                     sprintf(act_dir, "%s/activation%d/label%d/%s", model_dir, layer + 1, label + 1, basenames[k]);
                     if (!iftDirExists(act_dir)) iftMakeDir(act_dir);
                 }
@@ -286,7 +289,7 @@ void ProcessBatch(iftFileSet *fs, int first, int last,
                 #pragma omp parallel for
                 for (int j = 0; j < input->val[k]->num_feats; j++)
                 {
-                    char filename[512];
+                    char filename[1024];
                     temp[j] = iftInterp2D(activations[j], scale[0], scale[1]);
                     
                     int label = 1;
@@ -320,7 +323,7 @@ void ProcessBatch(iftFileSet *fs, int first, int last,
 
             for(int d = 0; d < nDecoders; d++)
             {
-                char output_dir[512];
+                char output_dir[1024];
                 char *decoder_name = iftGFLIMDecoderToString(decoders[d]);
 
                 sprintf(output_dir, "%s/%s_%d", model_dir, decoder_name, layer + 1);
@@ -338,7 +341,7 @@ void ProcessBatch(iftFileSet *fs, int first, int last,
                     #pragma omp parallel for
                     for (int label = 0; label < saliency->n; label++)
                     {
-                        char sal_dir[512], filename[512];
+                        char sal_dir[1024], filename[1024];
                         sprintf(sal_dir, "%s/label%d", output_dir, label + 1);
                         if (!iftDirExists(sal_dir)) iftMakeDir(sal_dir);
 
@@ -363,7 +366,7 @@ void ProcessBatch(iftFileSet *fs, int first, int last,
     {
         for (int layer = 1; layer <= nLayers; layer++)
         {
-            char dir[512];
+            char dir[1024];
             sprintf(dir, "%s/layer%d", model_dir, layer);
             iftRemoveDir(dir);
             sprintf(dir, "%s/labels%d", model_dir, layer);
@@ -502,7 +505,7 @@ int main(int argc, char *argv[])
                      decoders, nDecoders, finer_layers);
     }
 
-    char dir[512];
+    char dir[1024];
     sprintf(dir, "%s/layer0", model_dir);
     iftRemoveDir(dir);
     sprintf(dir, "%s/labels0", model_dir);

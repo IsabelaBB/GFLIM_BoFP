@@ -96,7 +96,7 @@ void ProcessBatch(iftFileSet *fs, int first, int last,
     for (int k = 0; k <= last - first; k++)
     {
         int i = k + first;
-        char ext[10], filename[512];
+        char ext[10], filename[1024];
         sprintf(ext, "%s", iftFileExt(fs->files[i]->path));
         basenames[k] = iftFilename(fs->files[i]->path, ext);
         sprintf(filename, "%s/layer%d/%s.json", model_dir, layer, basenames[k]);
@@ -120,7 +120,7 @@ void ProcessBatch(iftFileSet *fs, int first, int last,
 
         if (nkernels == 0)
         {
-            char filename[512];
+            char filename[1024];
             sprintf(filename, "%s/model/%s-conv%d-labels.txt", model_dir, basenames[k], skip);
             if (iftFileExists(filename))
             {
@@ -134,7 +134,7 @@ void ProcessBatch(iftFileSet *fs, int first, int last,
 
         for (int l = 0; l < nlabels; l++)
         {
-            char act_dir[512];
+            char act_dir[1024];
             sprintf(act_dir, "%s/label%d/%s", output_dir, l + 1, basenames[k]);
             if (!iftDirExists(act_dir)) iftMakeDir(act_dir);
         }
@@ -143,7 +143,7 @@ void ProcessBatch(iftFileSet *fs, int first, int last,
         #pragma omp parallel for
         for (int j = 0; j < input->val[k]->num_feats; j++)
         {
-            char filename[512];
+            char filename[1024];
             temp[j] = iftInterp2D(activations[j], scale[0], scale[1]);
             
             int label = 1;
@@ -199,7 +199,7 @@ int main(int argc, char *argv[])
 
     if (skip < 1) iftError("Skip connection must be greater than 0", "main");
 
-    char input_dir[200], labels_dir[200], input_net_labels[200], output_dir[200];
+    char input_dir[1024], labels_dir[1024], input_net_labels[1024], output_dir[1024];
 
     sprintf(input_dir, "%s/layer%d", model_dir, layer);
     sprintf(input_net_labels, "%s/labels0", model_dir);
@@ -220,7 +220,7 @@ int main(int argc, char *argv[])
     nremaining_graphs = nremaining_graphs - nbatches * batchsize;
 
     int *truelabels = NULL, nlabels = 1, nkernels = 0;
-    char filename[512];
+    char filename[1024];
     sprintf(filename, "%s/model/conv%d-labels.txt", model_dir, skip);
     if (iftFileExists(filename)) // merged layer in GFLIM-BoFP
     {

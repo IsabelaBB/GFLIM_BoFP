@@ -176,8 +176,8 @@ int main(int argc, char *argv[])
     if (layer > arch->nlayers)
         iftError("Invalid layer number: %d", "main", layer);
 
-    char input_graph_dir[200], input_labels_dir[200], skipConn_graph_dir[200], skipConn_labels_dir[200], output_graph_dir[200];
-    
+    char input_graph_dir[1024], input_labels_dir[1024], skipConn_graph_dir[1024], skipConn_labels_dir[1024], output_graph_dir[1024];
+
     sprintf(input_graph_dir, "%s/layer%d", model_dir, layer - 1);
     if (!iftDirExists(input_graph_dir))
         iftError("Graph directory does not exist: %s", "main", input_graph_dir);
@@ -203,7 +203,7 @@ int main(int argc, char *argv[])
 
     iftMatrix *Kmerged = NULL;
     float *bias_merged = NULL;
-    char *filename = iftAllocCharArray(512);
+    char *filename = iftAllocCharArray(1024);
 
     // read kernels and bias
     sprintf(filename, "%s/model/conv%d", model_dir, layer);

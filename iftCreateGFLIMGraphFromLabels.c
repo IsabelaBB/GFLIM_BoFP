@@ -52,7 +52,7 @@ int main(int argc, char *argv[])
     for (int i = 0; i < fs_imgs->n; i++)
     {
         char *basename = NULL;
-        char filename[512], ext[10];
+        char filename[1024], ext[10];
 
         sprintf(ext, "%s", iftFileExt(fs_imgs->files[i]->path));
         basename = iftFilename(fs_imgs->files[i]->path, ext);
@@ -91,7 +91,7 @@ int main(int argc, char *argv[])
         //printf("Minimum label value: %d\n", min_node);
         for (int p = 0; p < label_img->n; p++)
         {
-            spx_exist[label_img->val[p]-1] = true;
+            spx_exist[label_img->val[p]] = true;
         }
         for (int p = 0; p < max_node+1; p++)
         {

@@ -40,7 +40,7 @@ int main(int argc, char *argv[])
     char *maintain_kernel_list = argv[3];
     char *image_name = argv[4];
 
-    char filename[512];
+    char filename[1024];
 
     if (!iftDirExists(model_dir))
         iftError("Model directory does not exist: %s", "main", model_dir);

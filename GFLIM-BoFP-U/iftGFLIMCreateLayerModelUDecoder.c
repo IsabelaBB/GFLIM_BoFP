@@ -205,7 +205,7 @@ int main(int argc, char *argv[])
     iftGFLIMAggregation aggregation_opt = iftGLIMGraphGetAggregation(argv[5]);
     int level = atoi(argv[6]); // indicate the depth of the layer that's being created
 
-    char input_graph_dir[200], input_labels_dir[200], skipConn_graph_dir[200], skipConn_labels_dir[200];
+    char input_graph_dir[1024], input_labels_dir[1024], skipConn_graph_dir[1024], skipConn_labels_dir[1024];
 
     if (layer < 1)
         iftError("Invalid layer number: %d", "main", layer);
@@ -213,7 +213,7 @@ int main(int argc, char *argv[])
     if (layer > arch->nlayers)
         iftError("Layer number %d is greater than the number of layers in the network (%d)", "main", layer, arch->nlayers);
 
-    char markers_dir[200];
+    char markers_dir[1024];
     sprintf(markers_dir, "%s/markers", model_dir);
     if (!iftDirExists(markers_dir))
         iftError("Image markers directory does not exist: %s", "main", markers_dir);

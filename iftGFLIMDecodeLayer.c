@@ -84,7 +84,7 @@ void ProcessBatch(iftFileSet *fs, int first, int last,
     for (int k = 0; k <= last - first; k++)
     {
         int i = k + first;
-        char ext[10], filename[512];
+        char ext[10], filename[1024];
         sprintf(ext, "%s", iftFileExt(fs->files[i]->path));
         basenames[k] = iftFilename(fs->files[i]->path, ext);
         sprintf(filename, "%s/layer%d/%s.json", model_dir, layer, basenames[k]);
@@ -101,7 +101,7 @@ void ProcessBatch(iftFileSet *fs, int first, int last,
 
         if (decoder != IFT_GFLIM_TRISTATE_DECODER && nkernels == 0)
         {
-            char filename[512];
+            char filename[1024];
             int nkernels_i = 0, *truelabels_i = NULL, nlabels_i = 1;
             sprintf(filename, "%s/model/%s-conv%d-labels.txt", model_dir, basenames[k], layer_skip);
             if (iftFileExists(filename))
@@ -125,7 +125,7 @@ void ProcessBatch(iftFileSet *fs, int first, int last,
         /* post-process and save the salience maps */
         for (int l = 0; l < saliency->n; l++)
         {
-            char sal_dir[512], filename[512];
+            char sal_dir[1024], filename[1024];
             sprintf(sal_dir, "%s/label%d", output_dir, l + 1);
             if (!iftDirExists(sal_dir)) iftMakeDir(sal_dir);
 
@@ -170,7 +170,7 @@ int main(int argc, char *argv[])
     iftGFLIMStrideType stride_type = iftGFLIMGetStrideType(argv[5]);
     int batchsize = atoi(argv[6]);
 
-    char input_dir[200], labels_dir[200], input_net_labels[200], output_dir[200];
+    char input_dir[1024], labels_dir[1024], input_net_labels[1024], output_dir[1024];
 
     validateArgs(layer, model_dir, decoder, stride_type, input_dir, labels_dir, input_net_labels, batchsize, output_dir);
 
@@ -199,7 +199,7 @@ int main(int argc, char *argv[])
     nremaining_graphs = nremaining_graphs - nbatches * batchsize;
 
     int *truelabels = NULL, nlabels = 1, nkernels = 0;
-    char filename[512];
+    char filename[1024];
     sprintf(filename, "%s/model/conv%d-labels.txt", model_dir, layer_skip);
     if (decoder != IFT_GFLIM_TRISTATE_DECODER && iftFileExists(filename))
     {

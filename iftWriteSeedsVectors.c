@@ -121,7 +121,7 @@ int main(int argc, char *argv[]) {
     if(fs->n < 1)
       iftError("No files found in the markers directory: %s", "main", image_markers_dir);
     
-    char graph_dir[200], labels_dir[200], out_dir[200];
+    char graph_dir[1024], labels_dir[1024], out_dir[1024];
     
     if(nfpts_per_marker != -1){
       sprintf(graph_dir, "%s/layer0", model_dir);
@@ -136,13 +136,13 @@ int main(int argc, char *argv[]) {
     sprintf(out_dir, "%s/features/", model_dir);
     iftMakeDir(out_dir);
 
-    char out_dir2[512];
+    char out_dir2[1024];
     sprintf(out_dir2, "%s/neighbors/", model_dir);
     iftMakeDir(out_dir2);
     
     for (int i = 0; i < fs->n; i++)
     {
-        char filename[512];
+        char filename[1024];
         char *basename = iftFilename(fs->files[i]->path, "-seeds.txt");
         
         // read the superpixel image

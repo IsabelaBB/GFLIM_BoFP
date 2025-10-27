@@ -174,17 +174,36 @@ void ProcessBatch(iftFileSet *fs, int first, int last,
 }
 
 
-
+int getLayersToConcat(iftGFLIMArch *arch, int layer, int skip_layer, iftIntArray *layers_to_concat, int index)
+{
+    while(skip_layer > 0){ // itera sobre as camadas indicadas no skip connection
+        if(arch->layer[layer-1].skip_connection[skip_layer-1])
+        {
+            if(index == layers_to_concat->n) // realoca se necessario
+            {
+                layers_to_concat->n *= 2;
+                layers_to_concat->val = realloc(layers_to_concat->val, (layers_to_concat->n * 2) * sizeof(int));
+            }
+            layers_to_concat->val[index++] = skip_layer; // adiciona a camada skip na lista
+            // se for concat, busca recursivamente as camadas a serem concatenadas
+            if(strcmp(arch->layer[skip_layer-1].skip_type, "concat") == 0)
+                index = getLayersToConcat(arch, skip_layer, skip_layer-1, layers_to_concat, index);
+        }
+        skip_layer--;
+    }
+    return index;
+}
 
 int main(int argc, char *argv[])
 {
-    if (argc != 4 && argc != 5)
+    if (argc != 4 && argc != 5 && argc != 6)
     {
-        iftError("Usage: iftGFLIMWriteActivations <P1> <P2> <P3> [<P4>]\n"
+        iftError("Usage: iftGFLIMWriteActivations <P1> <P2> <P3> [<P4> <P5>]\n"
                  "[1] model directory \n"
                  "[2] layer number (1, 2,..) \n"
                  "[3] batch size \n"
                  "[4] skip connection (0: no skip, > 1: largest scale of skip) \n"
+                 "[5] arch to be used when skip connection is concat (optional)"
                  , "main");
     }
 
@@ -194,8 +213,12 @@ int main(int argc, char *argv[])
     int layer = atoi(argv[2]);
     int batchsize = atoi(argv[3]);
     int skip = layer;
+    iftGFLIMArch *arch = NULL;
 
-    if (argc == 5) skip = atoi(argv[4]);
+    if (argc > 4) skip = atoi(argv[4]);
+    if(argc > 5){
+        arch = iftReadGFLIMArch(argv[5]);
+    }
 
     if (skip < 1) iftError("Skip connection must be greater than 0", "main");
 
@@ -224,14 +247,35 @@ int main(int argc, char *argv[])
     sprintf(filename, "%s/model/conv%d-labels.txt", model_dir, skip);
     if (iftFileExists(filename)) // merged layer in GFLIM-BoFP
     {
-        // read one graph to get the number of kernels
-        iftGFLIMGraph *g = iftReadGFLIMGraph(fs->files[0]->path);
-        nkernels = g->num_feats; // number of kernels is the same for all graphs in the batch
-        iftDestroyGFLIMGraph(&g);
-
-        /* load merged model */
-        truelabels = iftGFLIMLoadKernelLabels(filename, &nkernels);
+        if(arch == NULL || strcmp(arch->layer[layer-1].skip_type, "concat") != 0)
+            truelabels = iftGFLIMLoadKernelLabels(filename, &nkernels);
+        else{
+            
+            iftIntArray *layers_to_concat = iftCreateIntArray(arch->nlayers);
+            layers_to_concat->val[0] = layer; // add current layer
+            int nconcat_layers = getLayersToConcat(arch, layer, layer-1, layers_to_concat, 1);
+                
+            for(int i = 0; i < nconcat_layers; i++)
+            {
+                sprintf(filename, "%s/model/conv%d-labels.txt", model_dir, layers_to_concat->val[i]);
+                if(!iftFileExists(filename))
+                    iftError("File %s does not exist", "main", filename);
+                    
+                /* load merged model */
+                int nkernels_i = 0;
+                int *truelabels_i = iftGFLIMLoadKernelLabels(filename, &nkernels_i);
+                
+                nkernels += nkernels_i;
+                truelabels = realloc(truelabels, nkernels * sizeof(int));
+                for(int j = 0; j < nkernels_i; j++)
+                    truelabels[nkernels - nkernels_i + j] = truelabels_i[j];
+                iftFree(truelabels_i);
+            }
+            iftDestroyIntArray(&layers_to_concat);
+            iftDestroyGFLIMArch(&arch);
+        }
         nlabels = iftGFLIMNumberOfTruelabels(truelabels, nkernels);
+
         sprintf(output_dir, "%s/activation%d", model_dir, layer);
     }
     else

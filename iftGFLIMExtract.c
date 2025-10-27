@@ -40,6 +40,26 @@ void validateArgs(char *images_dir, char *model_dir, iftGFLIMArch *arch, int nLa
     }
 }
 
+int getLayersToConcat(iftGFLIMArch *arch, int layer, int skip_layer, iftIntArray *layers_to_concat, int index)
+{
+    while(skip_layer > 0){ // itera sobre as camadas indicadas no skip connection
+        if(arch->layer[layer-1].skip_connection[skip_layer-1])
+        {
+            if(index == layers_to_concat->n) // realoca se necessario
+            {
+                layers_to_concat->n *= 2;
+                layers_to_concat->val = realloc(layers_to_concat->val, (layers_to_concat->n * 2) * sizeof(int));
+            }
+            layers_to_concat->val[index++] = skip_layer; // adiciona a camada skip na lista
+            // se for concat, busca recursivamente as camadas a serem concatenadas
+            if(strcmp(arch->layer[skip_layer-1].skip_type, "concat") == 0)
+                index = getLayersToConcat(arch, skip_layer, skip_layer-1, layers_to_concat, index);
+        }
+        skip_layer--;
+    }
+    return index;
+}
+
 void ProcessBatch(iftFileSet *fs_imgs, int first, int last, 
                 char *images_dir, char *model_dir, char *saliency_dir,
                 int initial_seeds, int nsuperpixels, int nLayers,
@@ -100,11 +120,37 @@ void ProcessBatch(iftFileSet *fs_imgs, int first, int last,
         /* Load labels indicating class (label) per channel */
         if (attention_opt != IFT_FLIMGRAPH_ATTENTION_NONE && bias_merged != NULL)
         {
-            sprintf(filename, "%s/model/conv%d-labels.txt", model_dir, l + 1);
-            if (!iftFileExists(filename))
-                iftError("File %s does not exist", "main", filename);
-            int nkernels = 0;
-            true_labels = iftGFLIMLoadKernelLabels(filename, &nkernels);
+            if(strcmp(arch->layer[l].skip_type, "concat") != 0)
+            {
+                sprintf(filename, "%s/model/conv%d-labels.txt", model_dir, l + 1);
+                if (!iftFileExists(filename))
+                    iftError("File %s does not exist", "main", filename);
+                int nkernels = 0;
+                true_labels = iftGFLIMLoadKernelLabels(filename, &nkernels);
+            }else{
+                iftIntArray *layers_to_concat = iftCreateIntArray(arch->nlayers);
+                layers_to_concat->val[0] = l+1; // add current layer
+                int nconcat_layers = getLayersToConcat(arch, l+1, l, layers_to_concat, 1);
+                int nkernels = 0;
+                for(int i = 0; i < nconcat_layers; i++)
+                {
+                    sprintf(filename, "%s/model/conv%d-labels.txt", model_dir, layers_to_concat->val[i]);
+                    if(!iftFileExists(filename))
+                        iftError("File %s does not exist", "main", filename);
+                        
+                    /* load merged model */
+                    int nkernels_i = 0;
+                    int *truelabels_i = iftGFLIMLoadKernelLabels(filename, &nkernels_i);
+                    int nlabels_i = iftGFLIMNumberOfTruelabels(truelabels_i, nkernels_i);
+
+                    nkernels += nkernels_i;
+                    true_labels = realloc(true_labels, nkernels * sizeof(int));
+                    for(int j = 0; j < nkernels_i; j++)
+                        true_labels[nkernels - nkernels_i + j] = truelabels_i[j];
+                    iftFree(truelabels_i);
+                }
+                iftDestroyIntArray(&layers_to_concat);
+            }
         }
 
         iftGFLIMEncodeLayerBatch_v2(input, Kmerged, arch->layer[l], label_imgs, bias_merged, stride_type, attention_opt, true_labels, aggregation_opt, kernel_removal);
@@ -119,8 +165,35 @@ void ProcessBatch(iftFileSet *fs_imgs, int first, int last,
     sprintf(filename, "%s/model/conv%d-labels.txt", model_dir, nLayers);
     if (iftFileExists(filename))
     {
-        truelabels = iftGFLIMLoadKernelLabels(filename, &nkernels);
-        nlabels = iftGFLIMNumberOfTruelabels(truelabels, nkernels);
+        if(strcmp(arch->layer[nLayers-1].skip_type, "concat") != 0)
+        {
+            truelabels = iftGFLIMLoadKernelLabels(filename, &nkernels);
+            nlabels = iftGFLIMNumberOfTruelabels(truelabels, nkernels);
+        }else{
+            iftIntArray *layers_to_concat = iftCreateIntArray(arch->nlayers);
+            layers_to_concat->val[0] = nLayers; // add current layer
+            int nconcat_layers = getLayersToConcat(arch, nLayers, nLayers-1, layers_to_concat, 1);
+
+            for(int i = 0; i < nconcat_layers; i++)
+            {
+                sprintf(filename, "%s/model/conv%d-labels.txt", model_dir, layers_to_concat->val[i]);
+                if(!iftFileExists(filename))
+                    iftError("File %s does not exist", "main", filename);
+                    
+                /* load merged model */
+                int nkernels_i = 0;
+                int *truelabels_i = iftGFLIMLoadKernelLabels(filename, &nkernels_i);
+                int nlabels_i = iftGFLIMNumberOfTruelabels(truelabels_i, nkernels_i);
+
+                nkernels += nkernels_i;
+                truelabels = realloc(truelabels, nkernels * sizeof(int));
+                for(int j = 0; j < nkernels_i; j++)
+                    truelabels[nkernels - nkernels_i + j] = truelabels_i[j];
+                iftFree(truelabels_i);
+                nlabels = iftMax(nlabels, nlabels_i);
+            }
+            iftDestroyIntArray(&layers_to_concat);
+        }
     }
     else
         nlabels = 1;

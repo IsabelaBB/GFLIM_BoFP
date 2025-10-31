@@ -267,22 +267,27 @@ iftGFLIMGraphArray *iftGFLIMMergeScales(char **graphs_dir_list, char **labels_di
 
             node_maps[j] = iftGFLIMComputeNodeMap(spx_imgs[j]->val[k], spx_imgs[0]->val[k]);
             iftDestroyImage(&spx_imgs[j]->val[k]);
+
+            iftMatrix *tmp = iftGFLIMUpsampleFeatureMatrix(matrices[j], node_maps[j], kernels_maps[j], matrices[0]->nrows, matrices[0]->ncols);
+            iftDestroyMatrix(&matrices[j]);
+            matrices[j] = tmp;
+            tmp = NULL;
         }
 
         // merge the feature matrices
         iftMatrix *merged = NULL;
         if(strcmp(merge_option, "dotprod") == 0)
-            merged = iftGFLIMMergeMatrices_dotProd(matrices, nscales, node_maps, kernels_maps, 0, false, false);
+            merged = iftGFLIMMergeMatrices_dotProd(matrices, nscales, 0, false, false);
         else if(strcmp(merge_option, "dotprod_sumscale0") == 0)
-            merged = iftGFLIMMergeMatrices_dotProd_sumScale0(matrices, nscales, node_maps, kernels_maps, 0, false, false);
+            merged = iftGFLIMMergeMatrices_dotProd_sumScale0(matrices, nscales, 0, false, false);
         else if(strcmp(merge_option, "dotprod_sumscalei") == 0)
-            merged = iftGFLIMMergeMatrices_dotProd_sumScalei(matrices, nscales, node_maps, kernels_maps, 0, false, false);
+            merged = iftGFLIMMergeMatrices_dotProd_sumScalei(matrices, nscales, 0, false, false);
         else if(strcmp(merge_option, "sum") == 0)
-            merged = iftGFLIMMergeMatrices_sum(matrices, nscales, node_maps, kernels_maps, 0, false, false, -1);
+            merged = iftGFLIMMergeMatrices_sum(matrices, nscales, 0, false, false, -1);
         else if(strcmp(merge_option, "sum_sumscale0") == 0)
-            merged = iftGFLIMMergeMatrices_sum(matrices, nscales, node_maps, kernels_maps, 0, false, false, 0);
+            merged = iftGFLIMMergeMatrices_sum(matrices, nscales, 0, false, false, 0);
         else if(strcmp(merge_option, "sum_sumscalei") == 0)
-            merged = iftGFLIMMergeMatrices_sum(matrices, nscales, node_maps, kernels_maps, 0, false, false, nscales-1);
+            merged = iftGFLIMMergeMatrices_sum(matrices, nscales, 0, false, false, nscales-1);
         else
             iftError("Unknown merge function: %s",  __func__, merge_option);
 

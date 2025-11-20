@@ -192,11 +192,16 @@ int main(int argc, char *argv[]) {
     
     if(!iftDirExists(model_dir))
       iftError("Model directory does not exist: %s", "main", model_dir);
-    if(!iftDirExists(image_markers_dir))
-      iftError("Image markers directory does not exist: %s", "main", image_markers_dir);
-
-    iftFileSet *fs = iftLoadFileSetFromDirBySuffix(image_markers_dir,"-seeds.txt", 1);
-    if(fs->n < 1)
+    
+    iftFileSet *fs = NULL;
+    if(iftDirExists(image_markers_dir))
+      fs = iftLoadFileSetFromDirBySuffix(image_markers_dir,"-seeds.txt", 1);
+    else{
+      if(!iftFileExists(image_markers_dir))
+        iftError("Image markers directory or file does not exist: %s", "main", image_markers_dir);
+      fs = iftLoadFileSetFromCSV(image_markers_dir, false);
+    }
+    if(fs == NULL || fs->n < 1)
       iftError("No files found in the markers directory: %s", "main", image_markers_dir);
     
     char graph_dir[200], labels_dir[200], out_dir[200];
@@ -217,9 +222,9 @@ int main(int argc, char *argv[]) {
     {
         char filename[512];
         char *basename = iftFilename(fs->files[i]->path, "-seeds.txt");
-        
-        // red the superpixel image
-        sprintf(filename, "%s/%s%s", labels_dir, basename, ".pgm");
+
+        // read the superpixel image
+        sprintf(filename, "%s/%s.pgm", labels_dir, basename);
         if(!iftFileExists(filename)) iftError("Labels file %s does not exist", __func__, filename);
         iftImage *label_img = iftReadImageByExt(filename);
         

@@ -39,12 +39,17 @@ int main(int argc, char *argv[])
 
     char markers_dir[1024];
     sprintf(markers_dir, "%s/markers", model_dir);
-    if (!iftDirExists(markers_dir))
-        iftError("Image markers directory does not exist: %s", "main", markers_dir);
-
-    iftFileSet *fs = iftLoadFileSetFromDirBySuffix(markers_dir, "-seeds_graph.txt", 1);
-    if (fs->n < 1)
-        iftError("Image markers directory is empty: %s", "main", markers_dir);
+    
+    iftFileSet *fs = NULL;
+    if(iftDirExists(markers_dir))
+      fs = iftLoadFileSetFromDirBySuffix(markers_dir, "-seeds_graph.txt", 1);
+    else{
+      if(!iftFileExists(markers_dir))
+        iftError("Graph markers directory or file does not exist: %s", "main", markers_dir);
+      fs = iftLoadFileSetFromCSV(markers_dir, false);
+    }
+    if (fs == NULL || fs->n < 1)
+        iftError("Graph markers directory is empty: %s", "main", markers_dir);
 
     sprintf(graph_dir, "%s/layer%d", model_dir, layer - 1);
     if (!iftDirExists(graph_dir))
@@ -57,7 +62,7 @@ int main(int argc, char *argv[])
     if (!iftDirExists(labels_dir))
         iftError("Labels directory does not exist: %s", "main", labels_dir);
     
-    char *filename = iftAllocCharArray(512);
+    char *filename = iftAllocCharArray(1024);
     sprintf(filename, "%s/model", model_dir);
     iftMakeDir(filename);
 
@@ -65,9 +70,9 @@ int main(int argc, char *argv[])
     {
         iftLabeledSet *S = iftReadSeedsGraph(fs->files[i]->path);
         if(S == NULL) continue;
-        
+
         char *basename = iftFilename(fs->files[i]->path, "-seeds_graph.txt");
-        
+
         // read the graph
         sprintf(filename, "%s/%s%s", graph_dir, basename, ".json");
         if(!iftFileExists(filename)) iftError("Graph file %s does not exist", "main", filename);
@@ -81,7 +86,7 @@ int main(int argc, char *argv[])
 
         if(stride_type != IFT_GFLIM_NOSTRIDE)
         {
-            sprintf(filename, "%s/%s%s", labels_dir, basename, ".pgm");
+            sprintf(filename, "%s/%s.pgm", labels_dir, basename);
             if(!iftFileExists(filename)) iftError("Labels file %s does not exist", __func__, filename);
             label_img = iftReadImageByExt(filename);
         }

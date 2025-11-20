@@ -16,14 +16,13 @@ iftDataSet *iftGFLIMExtractMarkerDataSet_local(iftGFLIMGraph *graph,
 {
 #ifdef IFT_DEBUG
     printf("%s \n", __func__);
-    if (graph == NULL)
-        printf("\t graph: NULL \n");
-    else
-        printf("\t graph nodes: %ld, feats: %ld, edges: %ld \n", graph->num_nodes, graph->num_feats, graph->num_edges);
-    if (S == NULL)
-        printf("\t S: NULL \n");
-    else
-        printf("\t S size: %d \n", iftLabeledSetSize(S));
+    if (graph == NULL) printf("\t graph: NULL \n");
+    else{
+        printf("\t graph nodes: %ld, feats: %ld, edges: %ld \n", 
+          graph->num_nodes, graph->num_feats, graph->num_edges);
+    }
+    if (S == NULL) printf("\t S: NULL \n");
+    else printf("\t S size: %d \n", iftLabeledSetSize(S));
     printf("\t kernel_size: %d\n", kernel_size);
     printf("\t most_similar: %s\n", most_similar ? "true" : "false");
     printf("\t attention_opt: %d\n", attention_opt);
@@ -114,11 +113,16 @@ int main(int argc, char *argv[]) {
 
     if(!iftDirExists(model_dir))
       iftError("Model directory does not exist: %s", "main", model_dir);
-    if(!iftDirExists(image_markers_dir))
-      iftError("Image markers directory does not exist: %s", "main", image_markers_dir);
-
-    iftFileSet *fs = iftLoadFileSetFromDirBySuffix(image_markers_dir,"-seeds.txt", 1);
-    if(fs->n < 1)
+    
+    iftFileSet *fs = NULL;
+    if(iftDirExists(image_markers_dir))
+      fs = iftLoadFileSetFromDirBySuffix(image_markers_dir,"-seeds.txt", 1);
+    else{
+      if(!iftFileExists(image_markers_dir))
+        iftError("Image markers directory or file does not exist: %s", "main", image_markers_dir);
+      fs = iftLoadFileSetFromCSV(image_markers_dir, false);
+    }
+    if(fs == NULL || fs->n < 1)
       iftError("No files found in the markers directory: %s", "main", image_markers_dir);
     
     char graph_dir[1024], labels_dir[1024], out_dir[1024];
@@ -146,7 +150,7 @@ int main(int argc, char *argv[]) {
         char *basename = iftFilename(fs->files[i]->path, "-seeds.txt");
         
         // read the superpixel image
-        sprintf(filename, "%s/%s%s", labels_dir, basename, ".pgm");
+        sprintf(filename, "%s/%s.pgm", labels_dir, basename);
         if(!iftFileExists(filename)) iftError("Labels file %s does not exist", __func__, filename);
         iftImage *label_img = iftReadImageByExt(filename);
         
@@ -154,7 +158,11 @@ int main(int argc, char *argv[]) {
         iftLabeledSet *S = iftReadSeeds(label_img, fs->files[i]->path);
         
         // convert image seeds to graph seeds
-        iftLabeledSet *graph_seeds = iftGFLIMImageMarkersToGraphMarkers(label_img, S, IFT_GFLIM_NOSTRIDE, label_img->xsize, label_img->ysize);
+        iftLabeledSet *graph_seeds = iftGFLIMImageMarkersToGraphMarkers(
+                                                                label_img, S, 
+                                                                IFT_GFLIM_NOSTRIDE, 
+                                                                label_img->xsize, 
+                                                                label_img->ysize);
         iftDestroyLabeledSet(&S);
         iftDestroyImage(&label_img);
 
@@ -168,7 +176,9 @@ int main(int argc, char *argv[]) {
 
         // extract neighbor information and compute the iftDataSet
         iftMatrix *neighbor_matrix = iftCreateMatrix(kernel_size, iftLabeledSetSize(graph_seeds));
-        iftDataSet *Z = iftGFLIMExtractMarkerDataSet_local(graph, graph_seeds, kernel_size, attention_opt, aggregation_opt, neighbor_matrix);
+        iftDataSet *Z = iftGFLIMExtractMarkerDataSet_local(graph, graph_seeds, 
+                                                    kernel_size, attention_opt, 
+                                                    aggregation_opt, neighbor_matrix);
 
         iftDestroyLabeledSet(&graph_seeds);
         iftDestroyGFLIMGraph(&graph);

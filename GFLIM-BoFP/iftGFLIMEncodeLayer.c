@@ -59,7 +59,17 @@ int main(int argc, char *argv[])
     sprintf(output_dir, "%s/layer%d", model_dir, layer);
     iftMakeDir(output_dir);
 
-    iftFileSet *fs = iftLoadFileSetFromDirBySuffix(filename, "-seeds_graph.txt", 1);
+    iftFileSet *fs = NULL;
+    if(iftDirExists(filename))
+      fs = iftLoadFileSetFromDirBySuffix(filename, "-seeds_graph.txt", 1);
+    else{
+        if(!iftFileExists(filename))
+            iftError("Graph markers directory or file does not exist: %s", "main", filename);
+        fs = iftLoadFileSetFromCSV(filename, false);
+    }
+
+    if(fs == NULL || fs->n < 1)
+        iftError("Graph markers directory is empty: %s", "main", filename);
 
     /* Encode layer */
     for (int i = 0; i < fs->n; i++)

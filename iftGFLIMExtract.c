@@ -8,7 +8,7 @@
 
 void validateArgs(char *images_dir, char *model_dir, iftGFLIMArch *arch, int nLayers, 
                   iftGFLIMGraphSpxMethod graph_type, int nsuperpixels, int batchsize, 
-                  int argc, char *argv[], int *initial_seeds)
+                  int argc, char *argv[], int *initial_seeds, bool *use_mask)
 {
     if (nLayers < 1)
         iftError("Invalid number of layers: %d", "main", nLayers);
@@ -16,7 +16,7 @@ void validateArgs(char *images_dir, char *model_dir, iftGFLIMArch *arch, int nLa
     if (nLayers > arch->nlayers)
         iftError("Invalid number of layers: %d", "main", nLayers);
 
-    if (!iftDirExists(images_dir))
+    if (!iftDirExists(images_dir) && !iftFileExists(images_dir))
         iftError("Images directory does not exist", "main");
 
     if (!iftDirExists(model_dir))
@@ -36,28 +36,12 @@ void validateArgs(char *images_dir, char *model_dir, iftGFLIMArch *arch, int nLa
         if ((*initial_seeds) < 1)
             iftError("Invalid number of initial seeds: %d", "main", (*initial_seeds));
         if (nsuperpixels > (*initial_seeds))
-            iftError("Number of superpixels (%d) must be smaller than the number of initial seeds (%d)", "main", nsuperpixels, (*initial_seeds));
+            iftError("Number of superpixels (%d) must be smaller"
+                    " than the number of initial seeds (%d)", 
+                    __func__, nsuperpixels, (*initial_seeds));
+        if (argc == 16)
+            *use_mask = atoi(argv[15]);
     }
-}
-
-int getLayersToConcat(iftGFLIMArch *arch, int layer, int skip_layer, iftIntArray *layers_to_concat, int index)
-{
-    while(skip_layer > 0){ // itera sobre as camadas indicadas no skip connection
-        if(arch->layer[layer-1].skip_connection[skip_layer-1])
-        {
-            if(index == layers_to_concat->n) // realoca se necessario
-            {
-                layers_to_concat->n *= 2;
-                layers_to_concat->val = realloc(layers_to_concat->val, (layers_to_concat->n * 2) * sizeof(int));
-            }
-            layers_to_concat->val[index++] = skip_layer; // adiciona a camada skip na lista
-            // se for concat, busca recursivamente as camadas a serem concatenadas
-            if(strcmp(arch->layer[skip_layer-1].skip_type, "concat") == 0)
-                index = getLayersToConcat(arch, skip_layer, skip_layer-1, layers_to_concat, index);
-        }
-        skip_layer--;
-    }
-    return index;
 }
 
 void ProcessBatch(iftFileSet *fs_imgs, int first, int last, 
@@ -66,7 +50,7 @@ void ProcessBatch(iftFileSet *fs_imgs, int first, int last,
                 iftGFLIMGraphNodeFeature graph_feat, iftGFLIMGraphSpxMethod graph_type,
                 iftGFLIMGraphAttention attention_opt, iftGFLIMStrideType stride_type,
                 iftGFLIMAggregation aggregation_opt, bool kernel_removal,
-                iftGFLIMDecoderType decoder, iftGFLIMArch *arch)
+                iftGFLIMDecoderType decoder, iftGFLIMArch *arch, bool use_mask)
 {
     iftGFLIMGraphArray *input = NULL;
     int ngraphs_batch = last - first + 1;
@@ -75,7 +59,9 @@ void ProcessBatch(iftFileSet *fs_imgs, int first, int last,
     char filename[1024];
 
     /* Create graphs */
-    input = iftGFLIMImageToFLIMGraphBatch_v2(fs_imgs, first, last, initial_seeds, nsuperpixels, graph_feat, graph_type, label_imgs);
+    input = iftGFLIMImageToFLIMGraphBatch_v2(fs_imgs, first, last, initial_seeds, 
+                                            nsuperpixels, graph_feat, graph_type, 
+                                            label_imgs, use_mask);
 
     for (int i = 0; i < ngraphs_batch; i++)
         label_imgs_0->val[i] = iftCopyImage(label_imgs->val[i]);
@@ -120,7 +106,8 @@ void ProcessBatch(iftFileSet *fs_imgs, int first, int last,
         /* Load labels indicating class (label) per channel */
         if (attention_opt != IFT_FLIMGRAPH_ATTENTION_NONE && bias_merged != NULL)
         {
-            if(strcmp(arch->layer[l].skip_type, "concat") != 0)
+            if(strcmp(arch->layer[l].skip_type, "concat") != 0 &&
+               strcmp(arch->layer[l].skip_type, "concat_att") != 0)
             {
                 sprintf(filename, "%s/model/conv%d-labels.txt", model_dir, l + 1);
                 if (!iftFileExists(filename))
@@ -134,7 +121,8 @@ void ProcessBatch(iftFileSet *fs_imgs, int first, int last,
                 int nkernels = 0;
                 for(int i = 0; i < nconcat_layers; i++)
                 {
-                    sprintf(filename, "%s/model/conv%d-labels.txt", model_dir, layers_to_concat->val[i]);
+                    sprintf(filename, "%s/model/conv%d-labels.txt", model_dir, 
+                                                    layers_to_concat->val[i]);
                     if(!iftFileExists(filename))
                         iftError("File %s does not exist", "main", filename);
                         
@@ -153,7 +141,11 @@ void ProcessBatch(iftFileSet *fs_imgs, int first, int last,
             }
         }
 
-        iftGFLIMEncodeLayerBatch_v2(input, Kmerged, arch->layer[l], label_imgs, bias_merged, stride_type, attention_opt, true_labels, aggregation_opt, kernel_removal);
+        iftGFLIMEncodeLayerBatch_v2(input, Kmerged, arch->layer[l], 
+                                    label_imgs, bias_merged, 
+                                    stride_type, attention_opt, 
+                                    true_labels, aggregation_opt, 
+                                    kernel_removal);
 
         iftDestroyMatrix(&Kmerged);
         iftFree(bias_merged);
@@ -165,7 +157,8 @@ void ProcessBatch(iftFileSet *fs_imgs, int first, int last,
     sprintf(filename, "%s/model/conv%d-labels.txt", model_dir, nLayers);
     if (iftFileExists(filename))
     {
-        if(strcmp(arch->layer[nLayers-1].skip_type, "concat") != 0)
+        if(strcmp(arch->layer[nLayers-1].skip_type, "concat") != 0 &&
+           strcmp(arch->layer[nLayers-1].skip_type, "concat_att") != 0)
         {
             truelabels = iftGFLIMLoadKernelLabels(filename, &nkernels);
             nlabels = iftGFLIMNumberOfTruelabels(truelabels, nkernels);
@@ -176,7 +169,8 @@ void ProcessBatch(iftFileSet *fs_imgs, int first, int last,
 
             for(int i = 0; i < nconcat_layers; i++)
             {
-                sprintf(filename, "%s/model/conv%d-labels.txt", model_dir, layers_to_concat->val[i]);
+                sprintf(filename, "%s/model/conv%d-labels.txt", model_dir, 
+                        layers_to_concat->val[i]);
                 if(!iftFileExists(filename))
                     iftError("File %s does not exist", "main", filename);
                     
@@ -205,7 +199,11 @@ void ProcessBatch(iftFileSet *fs_imgs, int first, int last,
         sprintf(ext, "%s", iftFileExt(fs_imgs->files[k + first]->path));
         char *basename = iftFilename(fs_imgs->files[k + first]->path, ext);
 
-        iftImageArray *saliency = iftGFLIMDecodeLayer(input->val[k], label_imgs->val[k], label_imgs_0->val[k], truelabels, nlabels, decoder);
+        iftImageArray *saliency = iftGFLIMDecodeLayer(input->val[k], 
+                                                    label_imgs->val[k], 
+                                                    label_imgs_0->val[k], 
+                                                    truelabels, nlabels, 
+                                                    decoder);
 
         char tmp[1024], out_file[1024];
         /* post-process and save the salience maps */
@@ -252,12 +250,16 @@ int main(int argc, char *argv[])
 
     if (argc != 15 && argc != 14)
     {
-        iftError("Usage: iftGFLIMExtract <P1> <P2> <P3> <P4> <P5> <P6> <P7> <P8> <P9> <P10> <P11> <P12> <P13> [<P14>] \n"
+        iftError("Usage: iftGFLIMExtract <P1> <P2> <P3> <P4> <P5> "
+                                        "<P6> <P7> <P8> <P9> <P10> "
+                                        "<P11> <P12> <P13> [<P14> "
+                                        "<P15>] \n"
                  "[ 1] Images directory \n"
                  "[ 2] Model directory \n"
                  "[ 3] Architecture file \n"
                  "[ 4] Number of layers \n"
-                 "[ 5] Graph feature {MEAN, SUM, SUM_MULT_RELSIZE, SUM_CONCAT_RELSIZE} (see iftGFLIMGraph.h for more information) \n"
+                 "[ 5] Graph feature {MEAN, SUM, SUM_MULT_RELSIZE, SUM_CONCAT_RELSIZE} "
+                                    "(see iftGFLIMGraph.h for more information) \n"
                  "[ 6] superpixel method {1:DISF, 2:ERGC} \n"
                  "[ 7] Number of superpixels \n"
                  "[ 8] decoder type (tristate, hybrid, graph-adaptive, gaussian) \n"
@@ -266,7 +268,8 @@ int main(int argc, char *argv[])
                  "[11] attention (NONE, NODE_SIZE, NEIGHB_SIMIL, NEIGHB_SIZE) \n"
                  "[12] aggregation (CONCAT, MEAN, WMEAN) \n"
                  "[13] reduce kernels (1/0) \n"
-                 "[14] Initial seeds (only used when superpixel method is DISF) \n",
+                 "[14] Initial seeds (only used when superpixel method is DISF) \n"
+                 "[15] Use mask (optional, bool) --- used only when superpixel method is DISF \n",
                  "argc: %d",
                  "main", argc);
     }
@@ -287,9 +290,12 @@ int main(int argc, char *argv[])
     bool kernel_removal = atoi(argv[13]);
 
     int initial_seeds = 0;
-    validateArgs(images_dir, model_dir, arch, nLayers, graph_type, nsuperpixels, batchsize, argc, argv, &initial_seeds);
+    bool use_mask = false;
+    validateArgs(images_dir, model_dir, arch, nLayers, 
+                graph_type, nsuperpixels, batchsize, 
+                argc, argv, &initial_seeds, &use_mask);
 
-    iftFileSet *fs_imgs = iftLoadFileSetFromDir(images_dir, 1);
+    iftFileSet *fs_imgs = iftLoadFileSetFromDirOrCSV(images_dir, 1, false);
     int ngraphs = fs_imgs->n;
     int nbatches = 0;
     int nremaining_graphs = fs_imgs->n;
@@ -345,7 +351,7 @@ int main(int argc, char *argv[])
                     graph_feat, graph_type,
                     attention_opt, stride_type,
                     aggregation_opt, kernel_removal,
-                    decoder, arch);
+                    decoder, arch, use_mask);
     }
 
     int first = ngraphs - nremaining_graphs, last = ngraphs - 1;
@@ -359,7 +365,7 @@ int main(int argc, char *argv[])
             graph_feat, graph_type,
             attention_opt, stride_type,
             aggregation_opt, kernel_removal,
-            decoder, arch);
+            decoder, arch, use_mask);
     }
 
     iftDestroyFileSet(&fs_imgs);

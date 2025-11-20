@@ -136,6 +136,7 @@ int main(int argc, char *argv[])
     iftLabeledSet *image_seeds = NULL;
     for(int p = 0; p < label_img->n; p++)
     {
+        if(label_img->val[p] < 1) continue;
         int label = labeled_superpixels[label_img->val[p] - 1];
         if(label > 0)
             iftInsertLabeledSetMarkerAndHandicap(&image_seeds, p, label-1, -1, 0);

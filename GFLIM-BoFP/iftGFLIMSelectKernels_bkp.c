@@ -177,7 +177,7 @@ int main(int argc, char *argv[])
     prev = NULL;
     while (s != NULL)
     {
-        if (rem_spx[label_img->val[s->elem] - 1])
+        if (label_img->val[s->elem] - 1 >= 0 && rem_spx[label_img->val[s->elem] - 1])
         {
             if (prev != NULL)
             {

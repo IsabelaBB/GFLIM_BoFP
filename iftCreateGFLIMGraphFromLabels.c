@@ -1,6 +1,8 @@
 /**
  * \file iftCreateGFLIMGraph.c
- * \brief Create graphs from images
+ * \brief Create graphs from superpixel images
+ * \details Given a directory with original images and a directory with superpixel images,
+ *         create graphs using the superpixels and save them in a specified graphs directory.
  */
 
 #include "iftCommon.h"
@@ -9,12 +11,12 @@
 void usage()
 {
     printf(" Usage: \n");
-    printf("iftCreateGFLIMGraph <P1> <P2> <P3> <P4> \n");
+    printf("iftCreateGFLIMGraph <P1> <P2> <P3> <P4> <P5>\n");
     printf("P1: original images directory \n");
     printf("P2: superpixel images diretory \n");
     printf("P3: Graph feature (MEAN, SUM, SUM_MULT_RELSIZE, SUM_CONCAT_RELSIZE). See iftGFLIMGraphNodeFeature at iftGFLIMGraph.h for details \n");
     printf("P4: graphs diretory \n");
-    
+    printf("P5: Using mask (bool) \n");
 }
 
 int main(int argc, char *argv[])
@@ -23,7 +25,7 @@ int main(int argc, char *argv[])
     printf("function %s \n", __func__);
 #endif
 
-    if (argc != 5)
+    if (argc != 6)
     {
         usage();
         return 1;
@@ -34,7 +36,7 @@ int main(int argc, char *argv[])
     char *spx_dir = argv[2];
     iftGFLIMGraphNodeFeature graph_feat = iftGFLIMGraphGetNodeFeature(argv[3]);
     char *graphs_dir = argv[4];
-    
+    bool using_mask = atoi(argv[5]);
 
     if (images_dir == NULL || !iftDirExists(images_dir))
         iftError("Image directory does not exist", __func__);
@@ -42,7 +44,7 @@ int main(int argc, char *argv[])
     if (spx_dir == NULL || !iftDirExists(spx_dir))
         iftError("Superpixel directory does not exist", __func__);
 
-    iftFileSet *fs_imgs = iftLoadFileSetFromDir(images_dir, 1);
+    iftFileSet *fs_imgs = iftLoadFileSetFromDirOrCSV(images_dir, 1, false);
     if (fs_imgs->n < 1)
         iftError("No images found in the directory", __func__);
 
@@ -56,7 +58,6 @@ int main(int argc, char *argv[])
 
         sprintf(ext, "%s", iftFileExt(fs_imgs->files[i]->path));
         basename = iftFilename(fs_imgs->files[i]->path, ext);
-        //printf("Processing image %s ...\n", basename);
 
         sprintf(filename, "%s/%s.pgm", spx_dir, basename);
         if (!iftFileExists(filename))
@@ -66,9 +67,7 @@ int main(int argc, char *argv[])
             continue;
         }
 
-        //printf("Reading label image %s ...\n", filename);
-        iftImage *label_img = iftReadImageByExt(filename);
-        //printf("Reading original image %s ...\n", fs_imgs->files[i]->path); 
+        iftImage *label_img = iftReadImageByExt(filename); 
         iftImage *img = iftReadImageByExt(fs_imgs->files[i]->path);
 
         iftMImage *mimg;
@@ -78,43 +77,34 @@ int main(int argc, char *argv[])
         iftImage *gray_img = NULL;
         iftGFLIMGraph *graph;
 
-        //printf("Converting image to MImage ...\n");
         if (iftIsColorImage(img))
             mimg = iftImageToMImage(img, LABNorm_CSPACE);
         else
             mimg = iftImageToMImage(img, GRAYNorm_CSPACE);
         
-        //printf("Shifting minimum label value to 1 ...\n");
         int min_node = iftMinimumValue(label_img);
         int max_node = iftMaximumValue(label_img);
         bool *spx_exist = (bool *) calloc(max_node + 1, sizeof(bool));
-        //printf("Minimum label value: %d\n", min_node);
+        
         for (int p = 0; p < label_img->n; p++)
-        {
             spx_exist[label_img->val[p]] = true;
-        }
+        
         for (int p = 0; p < max_node+1; p++)
         {
             if (!spx_exist[p])
-            {
-                printf("Image %s, Superpixel %d does not exist. \n", basename, p);
-            }
+                iftError("Image %s, Superpixel %d does not exist. \n", __func__, basename, p);
         }
 
         if(min_node != 1)
         {
+            int add = using_mask ? 0 : 1;
             for (int p = 0; p < label_img->n; p++)
-            {
-                label_img->val[p] += (-min_node + 1);
-            }
+                label_img->val[p] += (-min_node + add);
             sprintf(filename, "%s/%s.pgm", spx_dir, basename);
-            //printf("Writing superpixel image %s ...\n", filename);
             iftWriteImageByExt(label_img, filename);
         }
         int num_superpixels = iftMaximumValue(label_img);
-        //printf("Number of superpixels: %d\n", num_superpixels);
 
-        //printf("Creating graph ...\n");
         switch (graph_feat)
         {
         case IFT_FLIMGRAPH_FEATURE_MEAN:
@@ -179,13 +169,10 @@ int main(int argc, char *argv[])
         }
 
         sprintf(filename, "%s/%s.json", graphs_dir, basename);
-        //printf("Writing graph at %s ...\n", filename);
         iftWriteGFLIMGraph(graph, filename);
 
         if(gray_img != NULL)
-        {
             iftDestroyImage(&gray_img);
-        }
         iftDestroyAdjRel(&A);
         iftDestroyMImage(&mimg);
         iftDestroyImage(&label_img);

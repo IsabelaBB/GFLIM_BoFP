@@ -165,7 +165,6 @@ iftIntArray **iftGFLIMCompute_kernel_maps_scales(char *filename)
             }else
                 kernel_maps[l+1]->val[i] = kernel_maps[l+1]->val[k0];
         }
-        //printf("line %d: nkernels: %d\n", l, nkernelsi);
         iftFree(kernel_maps_scale0[l]);
     }   
     iftFree(kernel_maps_scale0);
@@ -227,28 +226,27 @@ void iftGFLIMMergeScales(int layer, char *kernels_file, char *model_dir, iftFile
 
             node_maps[j] = iftGFLIMComputeNodeMap(spx_img, spx_img0);
             iftDestroyImage(&spx_img);
-        }
 
-        /*for(int i = 0; i < list_superpixels->n; i++)
-        {
-            if(i == 0) continue;
-            X[i], nodes_map[i], kernels_map[i], X[finer_scale]->nrows, X[finer_scale]->ncols
-        }*/
+            iftMatrix *tmp = iftGFLIMUpsampleFeatureMatrix(matrices[j], node_maps[j], kernels_maps[j], matrices[0]->nrows, matrices[0]->ncols);
+            iftDestroyMatrix(&matrices[j]);
+            matrices[j] = tmp;
+            tmp = NULL;
+        }
 
         // merge the feature matrices
         iftMatrix *merged = NULL;
         if(strcmp(merge_option, "dotprod") == 0)
-            merged = iftGFLIMMergeMatrices_dotProd(matrices, list_superpixels->n, node_maps, kernels_maps, 0, false, false);
+            merged = iftGFLIMMergeMatrices_dotProd(matrices, list_superpixels->n, 0, false, false);
         else if(strcmp(merge_option, "dotprod_sumscale0") == 0)
-            merged = iftGFLIMMergeMatrices_dotProd_sumScale0(matrices, list_superpixels->n, node_maps, kernels_maps, 0, false, false);
+            merged = iftGFLIMMergeMatrices_dotProd_sumScale0(matrices, list_superpixels->n, 0, false, false);
         else if(strcmp(merge_option, "dotprod_sumscalei") == 0)
-            merged = iftGFLIMMergeMatrices_dotProd_sumScalei(matrices, list_superpixels->n, node_maps, kernels_maps, 0, false, false);
+            merged = iftGFLIMMergeMatrices_dotProd_sumScalei(matrices, list_superpixels->n, 0, false, false);
         else if(strcmp(merge_option, "sum") == 0)
-            merged = iftGFLIMMergeMatrices_sum(matrices, list_superpixels->n, node_maps, kernels_maps, 0, false, false, -1);
+            merged = iftGFLIMMergeMatrices_sum(matrices, list_superpixels->n, 0, false, false, -1);
         else if(strcmp(merge_option, "sum_sumscale0") == 0)
-            merged = iftGFLIMMergeMatrices_sum(matrices, list_superpixels->n, node_maps, kernels_maps, 0, false, false, 0);
+            merged = iftGFLIMMergeMatrices_sum(matrices, list_superpixels->n, 0, false, false, 0);
         else if(strcmp(merge_option, "sum_sumscalei") == 0)
-            merged = iftGFLIMMergeMatrices_sum(matrices, list_superpixels->n, node_maps, kernels_maps, 0, false, false, list_superpixels->n-1);
+            merged = iftGFLIMMergeMatrices_sum(matrices, list_superpixels->n, 0, false, false, list_superpixels->n-1);
         else
             iftError("Unknown merge function: %s",  __func__, merge_option);
 
@@ -329,7 +327,7 @@ int main(int argc, char *argv[]) {
 
     if(!iftDirExists(model_dir))
       iftError("Model directory does not exist: %s", "main", model_dir);
-    if(!iftDirExists(images_folder))
+    if(!iftDirExists(images_folder) && !iftFileExists(images_folder))
       iftError("Images directory does not exist: %s", "main", images_folder);
     if(!iftFileExists(kernel_maps_file))
       iftError("Kernel maps file does not exist: %s", "main", kernel_maps_file);
@@ -338,7 +336,7 @@ int main(int argc, char *argv[]) {
     if(list_superpixels == NULL || list_superpixels->n == 0)
       iftError("Invalid list of superpixels: %s", "main", argv[2]);
 
-    iftFileSet *fs = iftLoadFileSetFromDir(images_folder, 1);
+    iftFileSet *fs = iftLoadFileSetFromDirOrCSV(images_folder, 1, false);
     if(fs->n < 1)
       iftError("No files found in the images directory: %s", "main", images_folder);
     

@@ -15,7 +15,7 @@ void validateArgs(char *images_dir, char *model_dir, iftGFLIMArch *arch, int nLa
     if (nLayers > arch->nlayers)
         iftError("Invalid number of layers: %d", __func__, nLayers);
 
-    if (!iftDirExists(images_dir))
+    if (!iftDirExists(images_dir) && !iftFileExists(images_dir))
         iftError("Images directory does not exist", __func__);
 
     if (!iftDirExists(model_dir))
@@ -102,7 +102,10 @@ void ProcessBatch(iftFileSet *fs_imgs, int first, int last,
             true_labels = iftGFLIMLoadKernelLabels(filename, &nkernels);
         }
 
-        iftGFLIMEncodeLayerBatch_v2(input, Kmerged, arch->layer[l], label_imgs, bias_merged, stride_type, attention_opt, true_labels, aggregation_opt, kernel_removal);
+        iftGFLIMEncodeLayerBatch_v2(input, Kmerged, arch->layer[l], 
+                                    label_imgs, bias_merged, stride_type, 
+                                    attention_opt, true_labels, 
+                                    aggregation_opt, kernel_removal);
 
         iftDestroyMatrix(&Kmerged);
         iftFree(bias_merged);
@@ -112,7 +115,8 @@ void ProcessBatch(iftFileSet *fs_imgs, int first, int last,
         sprintf(filename, "%s/model/kernels_map.txt", model_dir);
         if (!iftFileExists(filename))
             iftError("Model file not found: %s", __func__, filename);
-        iftGFLIMSkipConnectionBatch(input, label_imgs, fs_imgs, first, last, l + 1, arch, filename, model_dir);
+        iftGFLIMSkipConnectionBatch(input, label_imgs, fs_imgs, first, last, 
+                                        l + 1, arch, filename, model_dir);
 
         char dir[512];
         sprintf(dir, "%s/layer%d", model_dir, l+1);
@@ -204,7 +208,7 @@ int main(int argc, char *argv[])
 
     validateArgs(images_dir, model_dir, arch, nLayers, batchsize, argc, argv);
 
-    iftFileSet *fs_imgs = iftLoadFileSetFromDir(images_dir, 1);
+    iftFileSet *fs_imgs = iftLoadFileSetFromDirOrCSV(images_dir, 1, false);
     int ngraphs = fs_imgs->n;
     int nbatches = 0;
     int nremaining_graphs = fs_imgs->n;

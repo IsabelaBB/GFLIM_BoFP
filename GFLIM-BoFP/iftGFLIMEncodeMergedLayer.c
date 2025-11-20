@@ -1,7 +1,7 @@
 #include "ift.h"
 
 /**
- * \file iftGFLIMGSEncodeMergedLayer.c
+ * \file iftGFLIMEncodeMergedLayer.c
  * \brief Encode a layer using the merged model created by iftGFLIMMergeLayerModels.
  */
 
@@ -57,17 +57,27 @@ int main(int argc, char *argv[])
         iftMakeDir(out_labels_dir);
     }
 
-    iftFileSet *fs = iftLoadFileSetFromDirBySuffix(input_dir, ".json", 1);
+    iftFileSet *fs = NULL;
+    
+    if(iftDirExists(input_dir))
+        fs = iftLoadFileSetFromDirBySuffix(input_dir, ".json", 1);
+    else{
+        if(!iftFileExists(input_dir))
+            iftError("Graph directory or file does not exist: %s", "main", input_dir);
+        fs = iftLoadFileSetFromCSV(input_dir, false);
+    }
+    if (fs == NULL || fs->n < 1)
+        iftError("Graph directory or file is empty or does not exist: %s", "main", input_dir);
 
     iftMatrix *Kmerged = NULL;
     float *bias_merged = NULL;
-
+    int *true_labels = NULL;
+    
     // read kernels and bias
     sprintf(filename, "%s/model/conv%d", model_dir, layer);
     iftGFLIMLoadMergedModel(filename, &Kmerged, &bias_merged);
 
     // read the kernel labels
-    int *true_labels = NULL;
     if (attention_opt != IFT_FLIMGRAPH_ATTENTION_NONE) // several attention mechanisms use the kernel labels
     {
         sprintf(filename, "%s/model/conv%d-labels.txt", model_dir, layer);

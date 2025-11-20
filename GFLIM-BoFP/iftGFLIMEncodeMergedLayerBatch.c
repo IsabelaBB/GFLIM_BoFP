@@ -64,97 +64,125 @@ int main(int argc, char *argv[])
         iftMakeDir(out_labels_dir);
     }
 
-    iftFileSet *fs = iftLoadFileSetFromDirBySuffix(input_dir, ".json", 1);
+    iftFileSet *fs = NULL;
+
+    if(iftDirExists(input_dir))
+        fs = iftLoadFileSetFromDirBySuffix(input_dir, ".json", 1);
+    else{
+        if(!iftFileExists(input_dir))
+            iftError("Graph directory or file does not exist: %s", "main", input_dir);
+        fs = iftLoadFileSetFromCSV(input_dir, false);
+    }
+
+    if(fs == NULL || fs->n < 1)
+        iftError("Graph directory or file is empty or does not exist: %s", "main", input_dir);
 
     // load the merged model
     iftMatrix *Kmerged = NULL;
     float *bias_merged = NULL;
-    int *kernel_labels = NULL;
+    int *true_labels = NULL;
+
+    // read kernels and bias
+    sprintf(filename, "%s/model/conv%d", model_dir, layer);
+    iftGFLIMLoadMergedModel(filename, &Kmerged, &bias_merged);
+
+    // read the kernel labels
     if(attention_opt != IFT_FLIMGRAPH_ATTENTION_NONE)
     {
         sprintf(filename, "%s/model/conv%d-labels.txt", model_dir, layer);
         if (!iftFileExists(filename))
             iftError("File %s does not exist", "main", filename);
         int nkernels = 0;
-        kernel_labels = iftGFLIMLoadKernelLabels(filename, &nkernels);
+        true_labels = iftGFLIMLoadKernelLabels(filename, &nkernels);
     }
-    sprintf(filename, "%s/model/conv%d", model_dir, layer);
-    iftGFLIMLoadMergedModel(filename, &Kmerged, &bias_merged);
+
+    batchsize = iftMin(batchsize, fs->n);
+    int nbatches = fs->n / batchsize;
+    int nremaining_graphs = fs->n - nbatches * batchsize;
 
     /* Encode layer with merged model */
-
-    for (int i = 0; i < fs->n; i += batchsize)
+    printf("\n");
+    for (int batch = 0; batch < nbatches; batch++)
     {
-        int first = i;
-        int last = iftMin(i + batchsize - 1, fs->n - 1);
-        char **basename = (char **)calloc(last - first + 1, sizeof(char *));
+        char *basename[batchsize];
+
+        printf("Processing batch %d of %d batches\r", batch + 1, nbatches);
+        fflush(stdout);
 
         /* read graphs */
-        iftGFLIMGraphArray *input_graph = iftCreateGFLIMGraphArray(last - first + 1);
-        iftImageArray *label_imgs = iftCreateImageArray(last - first + 1);
-        for (int j = 0; j < (last - first + 1); j++)
+        iftGFLIMGraphArray *input_graph = iftCreateGFLIMGraphArray(batchsize);
+        iftImageArray *label_imgs = iftCreateImageArray(batchsize);
+        for (int j = 0; j < batchsize; j++)
         {
-            char ext[10];
-            sprintf(ext, "%s", iftFileExt(fs->files[i + j]->path));
-            basename[j] = iftFilename(fs->files[i + j]->path, ext);
-            input_graph->val[j] = iftReadGFLIMGraph(fs->files[i + j]->path);
-            sprintf(filename, "%s/%s.pgn", labels_dir, basename[j]);
+            basename[j] = iftFilename(fs->files[batch * batchsize + j]->path, ".json");
+            input_graph->val[j] = iftReadGFLIMGraph(fs->files[batch * batchsize + j]->path);
+            sprintf(filename, "%s/%s.pgm", labels_dir, basename[j]);
             label_imgs->val[j] = iftReadImageByExt(filename);
         }
 
         // encode layer
-        iftGFLIMEncodeLayerBatch_v2(input_graph, Kmerged, arch->layer[layer - 1], label_imgs, bias_merged, stride_type, attention_opt, kernel_labels, aggregation_opt, kernel_removal);
+        iftGFLIMEncodeLayerBatch_v2(input_graph, Kmerged, arch->layer[layer - 1], 
+                                label_imgs, bias_merged, stride_type, attention_opt, 
+                                true_labels, aggregation_opt, kernel_removal);
 
-        /* write activations */
-        for (int j = first; j <= last; j++)
+        /* save output */
+        for (int j = 0; j < batchsize; j++)
         {
-            sprintf(filename, "%s/%s.json", output_dir, basename[j - first]);
-            iftWriteGFLIMGraph(input_graph->val[j - first], filename);
-            sprintf(filename, "%s/%s.pgm", out_labels_dir, basename[j - first]);
-            iftWriteImageByExt(label_imgs->val[j - first], filename);
-            iftFree(basename[j - first]);
+            sprintf(filename, "%s/%s.json", output_dir, basename[j]);
+            iftWriteGFLIMGraph(input_graph->val[j], filename);
+            if (stride_type != IFT_GFLIM_NOSTRIDE)
+            {
+                sprintf(filename, "%s/%s.pgm", out_labels_dir, basename[j]);
+                iftWriteImageByExt(label_imgs->val[j], filename);
+            }
+            iftFree(basename[j]);
         }
-        iftFree(basename);
         iftDestroyGFLIMGraphArray(&input_graph);
         iftDestroyImageArray(&label_imgs);
     }
 
-    int nremaining_graphs = fs->n % batchsize;
     int first = fs->n - nremaining_graphs, last = fs->n - 1;
     if (first <= last)
     {
-        char **basename = (char **)calloc(last - first + 1, sizeof(char *));
+        char *basename[last - first + 1];
+
+        printf("Processing remaining %d images\r", last - first + 1);
+        fflush(stdout);
+
         /* read graphs */
         iftGFLIMGraphArray *input_graph = iftCreateGFLIMGraphArray(last - first + 1);
         iftImageArray *label_imgs = iftCreateImageArray(last - first + 1);
         for (int j = 0; j < (last - first + 1); j++)
         {
-            char ext[10];
-            sprintf(ext, "%s", iftFileExt(fs->files[first + j]->path));
-            basename[j] = iftFilename(fs->files[first + j]->path, ext);
+            basename[j] = iftFilename(fs->files[first + j]->path, ".json");
             input_graph->val[j] = iftReadGFLIMGraph(fs->files[first + j]->path);
             sprintf(filename, "%s/%s.pgm", labels_dir, basename[j]);
             label_imgs->val[j] = iftReadImageByExt(filename);
         }
 
         // encode layer
-        iftGFLIMEncodeLayerBatch_v2(input_graph, Kmerged, arch->layer[layer - 1], label_imgs, bias_merged, stride_type, attention_opt, kernel_labels, aggregation_opt, kernel_removal);
+        iftGFLIMEncodeLayerBatch_v2(input_graph, Kmerged, arch->layer[layer - 1], 
+                                label_imgs, bias_merged, stride_type, attention_opt, 
+                                true_labels, aggregation_opt, kernel_removal);
 
         /* write activations */
-        for (int j = first; j <= last; j++)
+        for (int j = 0; j < (last - first + 1); j++)
         {
-            sprintf(filename, "%s/%s.json", output_dir, basename[j - first]);
-            iftWriteGFLIMGraph(input_graph->val[j - first], filename);
-            sprintf(filename, "%s/%s.pgm", out_labels_dir, basename[j - first]);
-            iftWriteImageByExt(label_imgs->val[j - first], filename);
-            iftFree(basename[j - first]);
+            sprintf(filename, "%s/%s.json", output_dir, basename[j]);
+            iftWriteGFLIMGraph(input_graph->val[j], filename);
+            if (stride_type != IFT_GFLIM_NOSTRIDE)
+            {
+                sprintf(filename, "%s/%s.pgm", out_labels_dir, basename[j]);
+                iftWriteImageByExt(label_imgs->val[j], filename);
+            }
+            iftFree(basename[j]);
         }
-        iftFree(basename);
         iftDestroyGFLIMGraphArray(&input_graph);
         iftDestroyImageArray(&label_imgs);
     }
+    printf("\n");
 
-    if(kernel_labels != NULL) iftFree(kernel_labels);
+    if(true_labels != NULL) iftFree(true_labels);
     iftDestroyMatrix(&Kmerged);
     iftFree(bias_merged);
     iftFree(filename);

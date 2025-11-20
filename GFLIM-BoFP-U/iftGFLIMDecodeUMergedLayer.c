@@ -72,7 +72,7 @@ iftSet **createLabelDict(iftImage *input_label_map, iftImage *skipConn_label_map
 	{
 		int input_label = input_label_map->val[p] - 1;
 		int skipConn_label = skipConn_label_map->val[p] - 1;
-		if(!iftBMapValue(match_matrix[input_label], skipConn_label))
+		if(input_label >= 0 && skipConn_label >= 0 && !iftBMapValue(match_matrix[input_label], skipConn_label))
 		{
             iftBMapSet1(match_matrix[input_label], skipConn_label);
 			iftInsertSet(&label_dict[input_label], skipConn_label);
@@ -89,7 +89,8 @@ iftGFLIMGraph *unpool(iftGFLIMGraph *input_graph, iftGFLIMGraph *skipConn_graph,
 {
 	int new_nfeatures = input_graph->num_feats;
 	
-    if(strcmp(skip_operation, "concat") == 0) {
+    if(strcmp(skip_operation, "concat") == 0 ||
+       strcmp(skip_operation, "concat_att") == 0) {
 		new_nfeatures += skipConn_graph->num_feats;
     }
 
@@ -125,7 +126,8 @@ iftGFLIMGraph *unpool(iftGFLIMGraph *input_graph, iftGFLIMGraph *skipConn_graph,
 					unpool_graph->nodes[skipConn_node].feats[i] += skipConn_features[i];*/
                 
 			}else{
-				if(strcmp(skip_operation,"concat") == 0)
+				if(strcmp(skip_operation,"concat") == 0 ||
+                   strcmp(skip_operation,"concat_att") == 0)
 				{
 					for(int i = 0; i < input_graph->num_feats; i++)
 						unpool_graph->nodes[skipConn_node].feats[i] = input_graph->nodes[input_node].feats[i]*(skipConn_size/input_size) + skipConn_graph->nodes[skipConn_node].feats[i];
@@ -197,8 +199,15 @@ int main(int argc, char *argv[])
     sprintf(output_graph_dir, "%s/layer%d", model_dir, layer);
     iftMakeDir(output_graph_dir);
 
-    iftFileSet *fs = iftLoadFileSetFromDirBySuffix(input_graph_dir, ".json", 1);
-    if (fs->n < 1)
+    iftFileSet *fs = NULL;
+    if(iftDirExists(input_graph_dir))
+        fs = iftLoadFileSetFromDirBySuffix(input_graph_dir, ".json", 1);
+    else{
+        if(!iftFileExists(input_graph_dir))
+            iftError("Graph directory or file does not exist: %s", "main", input_graph_dir);
+        fs = iftLoadFileSetFromCSV(input_graph_dir, false);
+    }
+    if (fs == NULL || fs->n < 1)
         iftError("Graph directory is empty: %s", "main", input_graph_dir);
 
     iftMatrix *Kmerged = NULL;
@@ -257,7 +266,7 @@ int main(int argc, char *argv[])
         // unpool and skip connection
         iftGFLIMGraph *unpool_graph = unpool(input_graph, skipConn_graph, label_dict, "sum");
         //iftGFLIMGraph *unpool_graph = skipConn_graph;
-        printf("unpool nodes %ld\n", unpool_graph->num_nodes);
+        printf("unpool nodes %d\n", unpool_graph->num_nodes);
         iftDestroyGFLIMGraph(&skipConn_graph);
         for(int i = 0; i < input_graph->num_nodes; i++)
             iftDestroySet(&label_dict[i]);

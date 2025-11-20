@@ -29,11 +29,11 @@ int main(int argc, char *argv[])
 
     if (!iftDirExists(model_dir))
         iftError("Model directory does not exist: %s", "main", model_dir);
-    if (!iftDirExists(images_folder))
+    if (!iftDirExists(images_folder) && !iftFileExists(images_folder))
         iftError("Images directory does not exist: %s", "main", images_folder);
 
-    iftFileSet *fs = iftLoadFileSetFromDir(images_folder, 1);
-    if (fs->n < 1)
+    iftFileSet *fs = iftLoadFileSetFromDirOrCSV(images_folder, 1, false);
+    if (fs == NULL || fs->n < 1)
         iftError("No files found in the images directory: %s", "main", images_folder);
 
     iftGFLIMArch *arch = iftReadGFLIMArch(arch_file);

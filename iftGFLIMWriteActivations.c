@@ -173,27 +173,6 @@ void ProcessBatch(iftFileSet *fs, int first, int last,
     iftFree(basenames);
 }
 
-
-int getLayersToConcat(iftGFLIMArch *arch, int layer, int skip_layer, iftIntArray *layers_to_concat, int index)
-{
-    while(skip_layer > 0){ // itera sobre as camadas indicadas no skip connection
-        if(arch->layer[layer-1].skip_connection[skip_layer-1])
-        {
-            if(index == layers_to_concat->n) // realoca se necessario
-            {
-                layers_to_concat->n *= 2;
-                layers_to_concat->val = realloc(layers_to_concat->val, (layers_to_concat->n * 2) * sizeof(int));
-            }
-            layers_to_concat->val[index++] = skip_layer; // adiciona a camada skip na lista
-            // se for concat, busca recursivamente as camadas a serem concatenadas
-            if(strcmp(arch->layer[skip_layer-1].skip_type, "concat") == 0)
-                index = getLayersToConcat(arch, skip_layer, skip_layer-1, layers_to_concat, index);
-        }
-        skip_layer--;
-    }
-    return index;
-}
-
 int main(int argc, char *argv[])
 {
     if (argc != 4 && argc != 5 && argc != 6)
@@ -230,8 +209,16 @@ int main(int argc, char *argv[])
 
     validateArgs(model_dir, layer, input_dir, labels_dir, input_net_labels);
 
-    iftFileSet *fs = iftLoadFileSetFromDirBySuffix(input_dir, ".json", true);
-    if (fs->n == 0)
+    iftFileSet *fs = NULL;
+    if(iftDirExists(input_dir))
+        fs = iftLoadFileSetFromDirBySuffix(input_dir, ".json", true);
+    else
+    {
+        if(!iftFileExists(input_dir))
+            iftError("Input directory or file does not exist: %s", "main", input_dir);
+        fs = iftLoadFileSetFromCSV(input_dir, false);
+    }
+    if (fs == NULL || fs->n == 0)
         iftError("No images found in the input directory: %s", "main", input_dir);
 
     int ngraphs = fs->n;
@@ -247,7 +234,8 @@ int main(int argc, char *argv[])
     sprintf(filename, "%s/model/conv%d-labels.txt", model_dir, skip);
     if (iftFileExists(filename)) // merged layer in GFLIM-BoFP
     {
-        if(arch == NULL || strcmp(arch->layer[layer-1].skip_type, "concat") != 0)
+        if(arch == NULL || (strcmp(arch->layer[layer-1].skip_type, "concat") != 0 &&
+           strcmp(arch->layer[layer-1].skip_type, "concat_att") != 0))
             truelabels = iftGFLIMLoadKernelLabels(filename, &nkernels);
         else{
             

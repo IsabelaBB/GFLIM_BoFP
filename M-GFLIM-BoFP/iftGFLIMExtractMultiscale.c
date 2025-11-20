@@ -891,7 +891,7 @@ int main(int argc, char *argv[])
        strcmp(merge_option, "dotprod_sumscalei") != 0 && strcmp(merge_option, "sum") != 0)
         iftError("Invalid merge option: %s", __func__, merge_option);
 
-    iftFileSet *fs_imgs = iftLoadFileSetFromDir(images_dir, 1);
+    iftFileSet *fs_imgs = iftLoadFileSetFromDirOrCSV(images_dir, 1, false);
     int ngraphs = fs_imgs->n;
     int nbatches = 0;
     int nremaining_graphs = fs_imgs->n;

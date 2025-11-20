@@ -15,7 +15,7 @@ void validateArgs(char *images_dir, char *model_dir, iftGFLIMArch *arch, int nLa
     if (nLayers > arch->nlayers)
         iftError("Invalid number of layers: %d", __func__, nLayers);
 
-    if (!iftDirExists(images_dir))
+    if (!iftDirExists(images_dir) && !iftFileExists(images_dir))
         iftError("Images directory does not exist", __func__);
 
     if (!iftDirExists(model_dir))
@@ -103,26 +103,6 @@ char *iftGFLIMDecoderToString(iftGFLIMDecoderType decoder)
         return NULL;
     }
     return decoder_name;
-}
-
-int getLayersToConcat(iftGFLIMArch *arch, int layer, int skip_layer, iftIntArray *layers_to_concat, int index)
-{
-    while(skip_layer > 0){ // itera sobre as camadas indicadas no skip connection
-        if(arch->layer[layer-1].skip_connection[skip_layer-1])
-        {
-            if(index == layers_to_concat->n) // realoca se necessario
-            {
-                layers_to_concat->n *= 2;
-                layers_to_concat->val = realloc(layers_to_concat->val, (layers_to_concat->n * 2) * sizeof(int));
-            }
-            layers_to_concat->val[index++] = skip_layer; // adiciona a camada skip na lista
-            // se for concat, busca recursivamente as camadas a serem concatenadas
-            if(strcmp(arch->layer[skip_layer-1].skip_type, "concat") == 0)
-                index = getLayersToConcat(arch, skip_layer, skip_layer-1, layers_to_concat, index);
-        }
-        skip_layer--;
-    }
-    return index;
 }
 
 void ProcessBatch(iftFileSet *fs, int first, int last, 
@@ -225,7 +205,8 @@ void ProcessBatch(iftFileSet *fs, int first, int last,
             if (!iftFileExists(filename))
                 iftError("File %s does not exist", __func__, filename);
             
-            if(strcmp(arch->layer[layer].skip_type, "concat") != 0 || layer == 0)
+            if(strcmp(arch->layer[layer].skip_type, "concat") != 0 || layer == 0 ||
+               strcmp(arch->layer[layer].skip_type, "concat_att") != 0)
             {
                 true_labels = iftGFLIMLoadKernelLabels(filename, &nkernels);    
             }else{
@@ -252,7 +233,10 @@ void ProcessBatch(iftFileSet *fs, int first, int last,
             }
         }
 
-        iftGFLIMEncodeLayerBatch_v2(input, Kmerged, arch->layer[layer], label_imgs, bias_merged, stride_type, attention_opt, true_labels, aggregation_opt, kernel_removal);
+        iftGFLIMEncodeLayerBatch_v2(input, Kmerged, arch->layer[layer], 
+                                label_imgs, bias_merged, stride_type, 
+                                attention_opt, true_labels, 
+                                aggregation_opt, kernel_removal);
         iftFree(true_labels); true_labels = NULL;
         iftDestroyMatrix(&Kmerged);
         iftFree(bias_merged);
@@ -263,7 +247,9 @@ void ProcessBatch(iftFileSet *fs, int first, int last,
             sprintf(filename, "%s/model/kernels_map.txt", model_dir);
             if (!iftFileExists(filename))
                 iftError("Model file not found: %s", __func__, filename);
-            iftGFLIMSkipConnectionBatch(input, label_imgs, fs, first, last, layer + 1, arch, filename, model_dir);
+            iftGFLIMSkipConnectionBatch(input, label_imgs, fs, first, last, 
+                                        layer + 1, arch, filename, 
+                                        model_dir);
         }
 
         bool use_layer_skip = false;
@@ -308,7 +294,8 @@ void ProcessBatch(iftFileSet *fs, int first, int last,
                 if (!iftFileExists(filename))
                     iftError("File %s does not exist", __func__, filename);
 
-                if(strcmp(arch->layer[layer].skip_type, "concat") != 0 || layer == 0)
+                if(strcmp(arch->layer[layer].skip_type, "concat") != 0 || layer == 0 ||
+                   strcmp(arch->layer[layer].skip_type, "concat_att") != 0)
                     true_labels = iftGFLIMLoadKernelLabels(filename, &nkernels);
                 else{
                     iftIntArray *layers_to_concat = iftCreateIntArray(arch->nlayers);
@@ -317,7 +304,9 @@ void ProcessBatch(iftFileSet *fs, int first, int last,
                     nkernels = 0;
                     for(int i = 0; i < nconcat_layers; i++)
                     {
-                        sprintf(filename, "%s/model/conv%d-labels.txt", model_dir, layers_to_concat->val[i]);
+                        sprintf(filename, "%s/model/conv%d-labels.txt", 
+                                                model_dir, 
+                                                layers_to_concat->val[i]);
                         if(!iftFileExists(filename))
                             iftError("File %s does not exist", "main", filename);
                             
@@ -349,7 +338,8 @@ void ProcessBatch(iftFileSet *fs, int first, int last,
                 for (int label = 0; label < nlabels; label++)
                 {
                     char act_dir[1024];
-                    sprintf(act_dir, "%s/activation%d/label%d/%s", model_dir, layer + 1, label + 1, basenames[k]);
+                    sprintf(act_dir, "%s/activation%d/label%d/%s", model_dir, 
+                                        layer + 1, label + 1, basenames[k]);
                     if (!iftDirExists(act_dir)) iftMakeDir(act_dir);
                 }
 
@@ -363,7 +353,8 @@ void ProcessBatch(iftFileSet *fs, int first, int last,
                     int label = 1;
                     if(true_labels != NULL) label = true_labels[j];
 
-                    sprintf(filename, "%s/activation%d/label%d/%s/kernel-%03d.pgm", model_dir, layer + 1, label, basenames[k], j + 1);
+                    sprintf(filename, "%s/activation%d/label%d/%s/kernel-%03d.pgm", 
+                                model_dir, layer + 1, label, basenames[k], j + 1);
                     iftWriteImageByExt(temp[j], filename);
                 }
 
@@ -386,7 +377,8 @@ void ProcessBatch(iftFileSet *fs, int first, int last,
                 if (!iftFileExists(filename))
                     iftError("File %s does not exist", __func__, filename);
 
-                if(strcmp(arch->layer[layer].skip_type, "concat") != 0 || layer == 0)
+                if(strcmp(arch->layer[layer].skip_type, "concat") != 0 || layer == 0 ||
+                   strcmp(arch->layer[layer].skip_type, "concat_att") != 0)
                     true_labels = iftGFLIMLoadKernelLabels(filename, &nkernels);
                 else{
                     iftIntArray *layers_to_concat = iftCreateIntArray(arch->nlayers);
@@ -428,7 +420,9 @@ void ProcessBatch(iftFileSet *fs, int first, int last,
                 {
                     iftImageArray *saliency = NULL;
                     iftGFLIMGraph *graph = iftCopyGFLIMGraph(input->val[k]->num_feats,input->val[k], true);
-                    saliency = iftGFLIMDecodeLayer(graph, label_imgs->val[k], label_imgs0->val[k], true_labels, nlabels, decoders[d]);
+                    saliency = iftGFLIMDecodeLayer(graph, label_imgs->val[k], 
+                                                label_imgs0->val[k], true_labels, 
+                                                nlabels, decoders[d]);
                     iftDestroyGFLIMGraph(&graph);
                     
                     /* post-process and save the salience maps */
@@ -483,7 +477,9 @@ int main(int argc, char *argv[])
 
     if (argc != 16)
     {
-        iftError("Usage: iftGFLIMExtract <P1> <P2> <P3> <P4> <P5> <P6> <P7> <P8> <P9> <P10> <P11> <P12> <P13> <P14> <P15> \n"
+        iftError("Usage: iftGFLIMExtract <P1> <P2> <P3> <P4> <P5> "
+                                        "<P6> <P7> <P8> <P9> <P10> "
+                                        "<P11> <P12> <P13> <P14> <P15> \n"
                 // parameters related to input data
                 "[ 1] Images directory \n"
                 "[ 2] Graphs directory \n"
@@ -530,16 +526,6 @@ int main(int argc, char *argv[])
     int nDecoders = 0;
     iftGFLIMDecoderType *decoders = SplitDecoderList(argv[15], &nDecoders); // decoders
 
-    /*printf("Layers to save activations: ");
-    for(int i = 0; i < nLayers_saveAct; i++)
-        printf("%d ", list_int_act[i]);
-    printf("\n");
-
-    printf("Layers to decode: ");
-    for(int i = 0; i < nLayers_decode; i++)
-        printf("%d ", list_int_decode[i]);
-    printf("\n");*/
-
     bool *layers_saveAct = (bool *)iftAlloc(nLayers, sizeof(bool));
     for(int i = 0; i < nLayers_saveAct; i++){
         if(list_int_act[i] > 0)
@@ -556,7 +542,7 @@ int main(int argc, char *argv[])
 
     validateArgs(images_dir, model_dir, arch, nLayers, batchsize, argc, argv);
 
-    iftFileSet *fs_imgs = iftLoadFileSetFromDir(images_dir, 1);
+    iftFileSet *fs_imgs = iftLoadFileSetFromDirOrCSV(images_dir, 1, false);
     int ngraphs = fs_imgs->n;
     int nbatches = 0;
     int nremaining_graphs = fs_imgs->n;
@@ -571,10 +557,10 @@ int main(int argc, char *argv[])
     // get the finer residual layer (with more nodes) to be used as reference in the upsampling
     int *finer_layers = iftGFLIMGetFinerResidualLayer(arch);
 
+    printf("\n");
     for (int batch = 0; batch < nbatches; batch++)
     {
         int first = batch * batchsize, last = first + batchsize - 1;
-        printf("                                                        \r");
         printf("Processing batch %d of %d batches\r", batch + 1, nbatches);
         fflush(stdout);
 
@@ -588,7 +574,6 @@ int main(int argc, char *argv[])
     int first = ngraphs - nremaining_graphs, last = ngraphs - 1;
     if (first <= last)
     {
-        printf("                                                        \r");
         printf("Processing remaining %d images\r", last - first + 1);
         fflush(stdout);
 
@@ -599,11 +584,14 @@ int main(int argc, char *argv[])
                      decoders, nDecoders, finer_layers);
     }
 
-    char dir[1024];
-    sprintf(dir, "%s/layer0", model_dir);
-    iftRemoveDir(dir);
-    sprintf(dir, "%s/labels0", model_dir);
-    iftRemoveDir(dir);
+    if(!save_intermediate)
+    {
+        char dir[1024];
+        sprintf(dir, "%s/layer0", model_dir);
+        iftRemoveDir(dir);
+        sprintf(dir, "%s/labels0", model_dir);
+        iftRemoveDir(dir);
+    }
 
     iftDestroyFileSet(&fs_imgs);
     iftDestroyGFLIMArch(&arch);
@@ -613,7 +601,7 @@ int main(int argc, char *argv[])
     iftFree(finer_layers);
 
     char *time = iftFormattedTime(iftCompTime(tstart, iftToc()));
-    printf("Done ... %s\n", time);
+    printf("\nDone ... %s\n", time);
     iftFree(time);
     return 0;
 }

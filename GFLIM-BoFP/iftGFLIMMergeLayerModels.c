@@ -37,7 +37,17 @@ int main(int argc, char *argv[])
     if(!iftDirExists(filename))
         iftError("Model directory does not exist: %s", "main", filename);
     
-    iftFileSet *fs = iftLoadFileSetFromDirBySuffix(input_dir, ".json", true);
+    iftFileSet *fs = NULL;
+
+    if(iftDirExists(input_dir))
+        fs = iftLoadFileSetFromDirBySuffix(input_dir, ".json", true);
+    else{
+        if(!iftFileExists(input_dir))
+            iftError("Graph directory or file does not exist: %s", "main", input_dir);
+        fs = iftLoadFileSetFromCSV(input_dir, false);
+    }
+    if (fs == NULL || fs->n < 1)
+        iftError("Graph directory or file is empty or does not exist: %s", "main", input_dir);
 
     iftMatrix *Kmerged = NULL;
     float *bias_merged = NULL;
@@ -100,6 +110,27 @@ int main(int argc, char *argv[])
         }
         iftFree(basename);
     }
+
+    /* Normalize merged kernels with z-norm */
+    /*for (int c = 0; c < Kmerged->ncols; c++)
+    {
+        float mean = 0.0f, stddev = 0.0f;
+        for (int r = 0; r < Kmerged->nrows; r++)
+            mean += iftMatrixElem(Kmerged, c, r);
+        mean /= Kmerged->nrows;
+        for (int r = 0; r < Kmerged->nrows; r++)
+            stddev += (iftMatrixElem(Kmerged, c, r) - mean) * (iftMatrixElem(Kmerged, c, r) - mean);
+
+        stddev = sqrtf(stddev / Kmerged->nrows) + 0.01f; // to avoid division by zero
+        if (stddev > 0.0f)
+        {
+            for (int r = 0; r < Kmerged->nrows; r++)
+            {
+                iftMatrixElem(Kmerged, c, r) =
+                    (iftMatrixElem(Kmerged, c, r) - mean) / stddev;
+            }
+        }
+    }*/
 
     /* Save merged kernels, bias and kernel labels */
     sprintf(filename, "%s/model/conv%d", model_dir, layer);

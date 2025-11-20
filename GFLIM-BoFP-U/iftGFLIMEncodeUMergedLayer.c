@@ -100,7 +100,16 @@ int main(int argc, char *argv[])
         iftMakeDir(noPool_dir);
     }
 
-    iftFileSet *fs = iftLoadFileSetFromDirBySuffix(input_dir, ".json", 1);
+    iftFileSet *fs = NULL; 
+    if(iftDirExists(input_dir))
+        fs = iftLoadFileSetFromDirBySuffix(input_dir, ".json", 1);
+    else{
+        if(!iftFileExists(input_dir))
+            iftError("Graph input directory or file does not exist: %s", "main", input_dir);
+        fs = iftLoadFileSetFromCSV(input_dir, false);
+    }
+    if (fs == NULL || fs->n < 1)
+        iftError("Graph input directory is empty: %s", "main", input_dir);
 
     iftMatrix *Kmerged = NULL;
     float *bias_merged = NULL;
@@ -153,8 +162,10 @@ int main(int argc, char *argv[])
             output_labels = iftCreateImage(input_labels->xsize, input_labels->ysize, input_labels->zsize);
             output_graph = iftGFLIMGraphStride(conv_graph, arch->layer[layer - 1].pool_stride, nodes_map);
             for (int j = 0; j < input_labels->n; j++)
-                output_labels->val[j] = nodes_map[input_labels->val[j] - 1] + 1;
-
+            {
+                int spx_label = input_labels->val[j] - 1;
+                if(spx_label >= 0) output_labels->val[j] = nodes_map[spx_label] + 1;
+            }
             iftDestroyGFLIMGraph(&conv_graph);
             conv_graph = output_graph;
             iftDestroyImage(&input_labels);

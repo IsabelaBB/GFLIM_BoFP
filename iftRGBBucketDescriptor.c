@@ -166,6 +166,8 @@ iftMImage *RGBBucketDescriptor(iftMImage *original_img_rgb, iftImage *labeled_im
     for(int p = 0; p < original_img_rgb->n; p++)
     {
         int spx_index = labeled_img->val[p] - 1; // get the superpixel index
+        if(spx_index < 0) continue; // skip pixels outside the mask
+
         float *pixel_color = original_img_rgb->val[p]; // get the pixel color
         
         float *min_desc_color = NULL;
@@ -221,7 +223,7 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
-    //timer *tstart = iftTic();
+    timer *tstart = iftTic();
     char *images_dir = argv[1];
     char *spx_labels_dir = argv[2];
     int nbuckets = atoi(argv[3]);
@@ -239,7 +241,7 @@ int main(int argc, char *argv[]) {
     if (nSelBuckets < 1)
         iftError("Number of selected buckets must be positive", __func__);
     
-    iftFileSet *fs_imgs = iftLoadFileSetFromDir(images_dir, 1);
+    iftFileSet *fs_imgs = iftLoadFileSetFromDirOrCSV(images_dir, 1, false);
     if (fs_imgs->n < 1)
         iftError("No images found in the directory", __func__);
 
@@ -306,8 +308,8 @@ int main(int argc, char *argv[]) {
         iftFree(time);
     }
     iftDestroyFileSet(&fs_imgs);
-    //char *time = iftFormattedTime(iftCompTime(tstart, iftToc()));
-    //printf("Done ... %s\n", time);
-    //iftFree(time);
+    char *time = iftFormattedTime(iftCompTime(tstart, iftToc()));
+    printf("Done ... %s\n", time);
+    iftFree(time);
     return 0;
 }

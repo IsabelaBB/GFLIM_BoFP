@@ -111,7 +111,7 @@ iftSet **createLabelDict(iftImage *input_label_map, iftImage *skipConn_label_map
 	{
 		int input_label = input_label_map->val[p] - 1;
 		int skipConn_label = skipConn_label_map->val[p] - 1;
-		if(!iftBMapValue(match_matrix[input_label], skipConn_label))
+		if(skipConn_label >= 0 && input_label >= 0 && !iftBMapValue(match_matrix[input_label], skipConn_label))
 		{
             iftBMapSet1(match_matrix[input_label], skipConn_label);
 			iftInsertSet(&(label_dict[input_label]), skipConn_label);
@@ -128,7 +128,8 @@ iftGFLIMGraph *unpool(iftGFLIMGraph *input_graph, iftGFLIMGraph *skipConn_graph,
 {
 	int new_nfeatures = input_graph->num_feats;
 	
-    if(strcmp(skip_operation, "concat") == 0) {
+    if(strcmp(skip_operation, "concat") == 0 ||
+       strcmp(skip_operation, "concat_att") == 0) {
 		new_nfeatures += skipConn_graph->num_feats;
     }
 
@@ -164,7 +165,8 @@ iftGFLIMGraph *unpool(iftGFLIMGraph *input_graph, iftGFLIMGraph *skipConn_graph,
 					unpool_graph->nodes[skipConn_node].feats[i] = skipConn_features[i];*/
                 
 			}else{
-				if(strcmp(skip_operation,"concat") == 0)
+				if(strcmp(skip_operation,"concat") == 0 ||
+                   strcmp(skip_operation,"concat_att") == 0)
 				{
 					for(int i = 0; i < input_graph->num_feats; i++)
 						unpool_graph->nodes[skipConn_node].feats[i] = input_features[i]*(skipConn_size/input_size) + skipConn_features[i];
@@ -215,12 +217,17 @@ int main(int argc, char *argv[])
 
     char markers_dir[1024];
     sprintf(markers_dir, "%s/markers", model_dir);
-    if (!iftDirExists(markers_dir))
-        iftError("Image markers directory does not exist: %s", "main", markers_dir);
-
-    iftFileSet *fs = iftLoadFileSetFromDirBySuffix(markers_dir, "-seeds_graph.txt", 1);
-    if (fs->n < 1)
-        iftError("Image markers directory is empty: %s", "main", markers_dir);
+    
+    iftFileSet *fs = NULL;
+    if(iftDirExists(markers_dir))
+        fs = iftLoadFileSetFromDirBySuffix(markers_dir, "-seeds_graph.txt", 1);
+    else{
+        if(!iftFileExists(markers_dir))
+            iftError("Graph markers directory or file does not exist: %s", "main", markers_dir);
+        fs = iftLoadFileSetFromCSV(markers_dir, false);
+    }
+    if (fs == NULL || fs->n < 1)
+        iftError("Graph markers directory is empty: %s", "main", markers_dir);
 
     sprintf(input_graph_dir, "%s/layer%d", model_dir, layer - 1);
     if (!iftDirExists(input_graph_dir))

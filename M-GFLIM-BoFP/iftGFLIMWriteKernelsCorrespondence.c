@@ -29,8 +29,15 @@ int main(int argc, char *argv[]) {
     if(argc == 6)
         save_markers_folder = argv[5];
 
-    iftFileSet *fs = iftLoadFileSetFromDirBySuffix(markers_folder_0,"-seeds_graph.txt", 1);
-    if(fs->n < 1)
+    iftFileSet *fs = NULL;
+    if(iftDirExists(markers_folder_0))
+        fs = iftLoadFileSetFromDirBySuffix(markers_folder_0,"-seeds_graph.txt", 1);
+    else{
+        if(!iftFileExists(markers_folder_0))
+            iftError("Graph markers directory or file does not exist: %s", "main", markers_folder_0);
+        fs = iftLoadFileSetFromCSV(markers_folder_0, false);
+    }
+    if(fs == NULL || fs->n < 1)
       iftError("No files found in the markers directory: %s", "main", markers_folder_0);
 
     if (save_markers_folder != NULL && !iftDirExists(save_markers_folder))
@@ -71,7 +78,9 @@ int main(int argc, char *argv[]) {
         // create a superpixel mapping from scale 0 to scale i
         iftIntArray *spx_map = iftCreateIntArray(nnodes0);
         for (int p = 0; p < spx_img0->n; p++) {
-            spx_map->val[spx_img0->val[p] - 1] = spx_imgi->val[p] - 1;
+            int spx_label = spx_img0->val[p] - 1;
+            if(spx_label >= 0)
+                spx_map->val[spx_label] = spx_imgi->val[p] - 1;
         } 
 
         iftDestroyImage(&spx_img0);

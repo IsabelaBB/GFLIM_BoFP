@@ -238,7 +238,7 @@ iftGFLIMGraphArray *iftGFLIMMergeScales(char **graphs_dir_list, char **labels_di
             true_labels = iftGFLIMLoadKernelLabels(filename, &nkernels);
         }
 
-        iftGFLIMEncodeLayerBatch_v2(input[j], Kmerged, arch->layer[1], spx_imgs[j], bias_merged, stride_type, attention_opt, true_labels, aggregation_opt, kernel_removal);
+        iftGFLIMEncodeLayerBatch(input[j], Kmerged, arch->layer[1], spx_imgs[j], bias_merged, stride_type, attention_opt, true_labels, aggregation_opt, kernel_removal);
         iftFree(true_labels); 
         iftDestroyMatrix(&Kmerged);
         iftFree(bias_merged);
@@ -740,7 +740,7 @@ void ProcessBatch(iftFileSet *fs, int first, int last,
             true_labels = iftGFLIMLoadKernelLabels(filename, &nkernels);
         }
 
-        iftGFLIMEncodeLayerBatch_v2(input, Kmerged, arch->layer[layer], label_imgs, bias_merged, stride_type, attention_opt, true_labels, aggregation_opt, kernel_removal);
+        iftGFLIMEncodeLayerBatch(input, Kmerged, arch->layer[layer], label_imgs, bias_merged, stride_type, attention_opt, true_labels, aggregation_opt, kernel_removal);
         iftFree(true_labels); true_labels = NULL;
         iftDestroyMatrix(&Kmerged);
         iftFree(bias_merged);

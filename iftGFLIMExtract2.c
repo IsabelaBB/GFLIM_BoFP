@@ -233,7 +233,7 @@ void ProcessBatch(iftFileSet *fs, int first, int last,
             }
         }
 
-        iftGFLIMEncodeLayerBatch_v2(input, Kmerged, arch->layer[layer], 
+        iftGFLIMEncodeLayerBatch(input, Kmerged, arch->layer[layer], 
                                 label_imgs, bias_merged, stride_type, 
                                 attention_opt, true_labels, 
                                 aggregation_opt, kernel_removal);
@@ -482,7 +482,7 @@ int main(int argc, char *argv[])
                                         "<P11> <P12> <P13> <P14> <P15> \n"
                 // parameters related to input data
                 "[ 1] Images directory \n"
-                "[ 2] Graphs directory \n"
+                "[ 2] Graphs directory \n" //*
                 "[ 3] Labels directory \n"
                 "[ 4] Model directory \n"
                 // parameters related to the network

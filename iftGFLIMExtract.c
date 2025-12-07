@@ -59,7 +59,7 @@ void ProcessBatch(iftFileSet *fs_imgs, int first, int last,
     char filename[1024];
 
     /* Create graphs */
-    input = iftGFLIMImageToFLIMGraphBatch_v2(fs_imgs, first, last, initial_seeds, 
+    input = iftGFLIMImageToFLIMGraphBatch(fs_imgs, first, last, initial_seeds, 
                                             nsuperpixels, graph_feat, graph_type, 
                                             label_imgs, use_mask);
 
@@ -141,7 +141,7 @@ void ProcessBatch(iftFileSet *fs_imgs, int first, int last,
             }
         }
 
-        iftGFLIMEncodeLayerBatch_v2(input, Kmerged, arch->layer[l], 
+        iftGFLIMEncodeLayerBatch(input, Kmerged, arch->layer[l], 
                                     label_imgs, bias_merged, 
                                     stride_type, attention_opt, 
                                     true_labels, aggregation_opt, 
@@ -254,21 +254,23 @@ int main(int argc, char *argv[])
                                         "<P6> <P7> <P8> <P9> <P10> "
                                         "<P11> <P12> <P13> [<P14> "
                                         "<P15>] \n"
+                // parameters related to input data
                  "[ 1] Images directory \n"
                  "[ 2] Model directory \n"
                  "[ 3] Architecture file \n"
                  "[ 4] Number of layers \n"
-                 "[ 5] Graph feature {MEAN, SUM, SUM_MULT_RELSIZE, SUM_CONCAT_RELSIZE} "
+                 "[ 5] Graph feature " // *
+                                    "{MEAN, SUM, SUM_MULT_RELSIZE, SUM_CONCAT_RELSIZE} "
                                     "(see iftGFLIMGraph.h for more information) \n"
-                 "[ 6] superpixel method {1:DISF, 2:ERGC} \n"
-                 "[ 7] Number of superpixels \n"
+                 "[ 6] superpixel method {1:DISF, 2:ERGC} \n" // *
+                 "[ 7] Number of superpixels \n" // *
                  "[ 8] decoder type (tristate, hybrid, graph-adaptive, gaussian) \n"
                  "[ 9] Batch size (> 0) \n"
                  "[10] Stride type (none, image-based, graph-based) \n"
                  "[11] attention (NONE, NODE_SIZE, NEIGHB_SIMIL, NEIGHB_SIZE) \n"
                  "[12] aggregation (CONCAT, MEAN, WMEAN) \n"
                  "[13] reduce kernels (1/0) \n"
-                 "[14] Initial seeds (only used when superpixel method is DISF) \n"
+                 "[14] Initial seeds (only used when superpixel method is DISF) \n" // *
                  "[15] Use mask (optional, bool) --- used only when superpixel method is DISF \n",
                  "argc: %d",
                  "main", argc);

@@ -150,7 +150,7 @@ int main(int argc, char *argv[])
 
         // pooling
         if(strcmp(arch->layer[layer - 1].pool_type, "no_pool") != 0){
-            iftGFLIMPoolingLayer(conv_graph, arch->layer[layer - 1].pool_type, arch->layer[layer - 1].pool_size, 1);
+            iftGFLIMPoolingLayer(conv_graph, arch->layer[layer - 1].pool_type, arch->layer[layer - 1].pool_size);
         }
             
         /* stride model */

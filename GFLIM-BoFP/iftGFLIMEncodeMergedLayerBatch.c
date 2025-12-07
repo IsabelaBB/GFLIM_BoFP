@@ -121,7 +121,7 @@ int main(int argc, char *argv[])
         }
 
         // encode layer
-        iftGFLIMEncodeLayerBatch_v2(input_graph, Kmerged, arch->layer[layer - 1], 
+        iftGFLIMEncodeLayerBatch(input_graph, Kmerged, arch->layer[layer - 1], 
                                 label_imgs, bias_merged, stride_type, attention_opt, 
                                 true_labels, aggregation_opt, kernel_removal);
 
@@ -161,7 +161,7 @@ int main(int argc, char *argv[])
         }
 
         // encode layer
-        iftGFLIMEncodeLayerBatch_v2(input_graph, Kmerged, arch->layer[layer - 1], 
+        iftGFLIMEncodeLayerBatch(input_graph, Kmerged, arch->layer[layer - 1], 
                                 label_imgs, bias_merged, stride_type, attention_opt, 
                                 true_labels, aggregation_opt, kernel_removal);
 

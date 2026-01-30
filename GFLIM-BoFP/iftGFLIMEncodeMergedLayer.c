@@ -27,7 +27,7 @@ int main(int argc, char *argv[])
     int layer = atoi(argv[3]);
     iftGFLIMStrideType stride_type = iftGFLIMGetStrideType(argv[4]);
     iftGFLIMGraphAttention attention_opt = iftGLIMGraphGetAttention(argv[5]);
-    iftGFLIMAggregation aggregation_opt = iftGLIMGraphGetAggregation(argv[6]);
+    iftGFLIMAggregation aggregation_opt = iftGFLIMGraphGetAggregation(argv[6]);
     bool kernel_removal = false;
     if (argc == 8)
         kernel_removal = atoi(argv[7]);
@@ -103,7 +103,10 @@ int main(int argc, char *argv[])
         }
         
         // encode layer
-        iftGFLIMGraph *output_graph = iftGFLIMEncodeLayer(graph, Kmerged, bias_merged, arch->layer[layer - 1], stride_type, input_labels, &output_labels, attention_opt, true_labels, aggregation_opt, kernel_removal);
+        iftGFLIMGraph *output_graph = iftGFLIMEncodeLayer(graph, Kmerged, bias_merged, 
+                                            arch->layer[layer - 1], stride_type, input_labels, 
+                                            &output_labels, attention_opt, true_labels, 
+                                            aggregation_opt, kernel_removal);
 
         iftDestroyImage(&input_labels);
         iftDestroyGFLIMGraph(&graph);

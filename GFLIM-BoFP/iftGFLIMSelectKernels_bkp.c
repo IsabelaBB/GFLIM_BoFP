@@ -60,7 +60,7 @@ int main(int argc, char *argv[])
         {
             kernel_size = atoi(argv[6]);
             attention_opt = iftGLIMGraphGetAttention(argv[7]);
-            aggregation_opt = iftGLIMGraphGetAggregation(argv[8]);
+            aggregation_opt = iftGFLIMGraphGetAggregation(argv[8]);
         }
     }
 

@@ -204,7 +204,7 @@ int main(int argc, char *argv[])
     iftGFLIMArch *arch = iftReadGFLIMArch(argv[2]);
     int layer = atoi(argv[3]);
     iftGFLIMGraphAttention attention_opt = iftGLIMGraphGetAttention(argv[4]);
-    iftGFLIMAggregation aggregation_opt = iftGLIMGraphGetAggregation(argv[5]);
+    iftGFLIMAggregation aggregation_opt = iftGFLIMGraphGetAggregation(argv[5]);
     int level = atoi(argv[6]); // indicate the depth of the layer that's being created
 
     char input_graph_dir[1024], input_labels_dir[1024], skipConn_graph_dir[1024], skipConn_labels_dir[1024];

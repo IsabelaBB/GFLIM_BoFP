@@ -288,7 +288,7 @@ int main(int argc, char *argv[])
     int batchsize = atoi(argv[9]);
     iftGFLIMStrideType stride_type = iftGFLIMGetStrideType(argv[10]);
     iftGFLIMGraphAttention attention_opt = iftGLIMGraphGetAttention(argv[11]);
-    iftGFLIMAggregation aggregation_opt = iftGLIMGraphGetAggregation(argv[12]);
+    iftGFLIMAggregation aggregation_opt = iftGFLIMGraphGetAggregation(argv[12]);
     bool kernel_removal = atoi(argv[13]);
 
     int initial_seeds = 0;

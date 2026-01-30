@@ -5,6 +5,4 @@ fi
 
 make IFT_GPU=$1 iftGFLIMConvertSeeds_v2 iftGFLIMCreateLayerModel \
   iftGFLIMEncodeLayer iftGFLIMEncodeMergedLayer iftGFLIMEncodeMergedLayerBatch \
-  iftGFLIMMergeLayerModels iftGFLIMSelectKernels \
-  iftGFLIMEncodeLayerV2 iftGFLIMEncodeMergedLayerBatchV2 \
-  iftGFLIMEncodeMergedLayerV2
+  iftGFLIMMergeLayerModels iftGFLIMSelectKernels 

@@ -21,7 +21,7 @@ iftGFLIMGraph *iftGFLIMUEncodeLayer(iftGFLIMGraph *graph,
 
     iftMImage *activ_relu = NULL;
     if (layer.relu)
-        activ_relu = iftMReLU(activ, bias, true);
+        activ_relu = iftLeakyMReLU(activ, bias, true, 0.01f);
     else
     {
         if (bias != NULL)
@@ -68,7 +68,7 @@ int main(int argc, char *argv[])
     iftGFLIMArch *arch = iftReadGFLIMArch(argv[2]);
     int layer = atoi(argv[3]);
     iftGFLIMGraphAttention attention_opt = iftGLIMGraphGetAttention(argv[4]);
-    iftGFLIMAggregation aggregation_opt = iftGLIMGraphGetAggregation(argv[5]);
+    iftGFLIMAggregation aggregation_opt = iftGFLIMGraphGetAggregation(argv[5]);
     bool kernel_removal = false;
     if (argc == 7)
         kernel_removal = atoi(argv[6]);

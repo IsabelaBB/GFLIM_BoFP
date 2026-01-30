@@ -29,7 +29,7 @@ int main(int argc, char *argv[])
     printf("function %s \n", __func__);
 #endif
 
-    srand(time(NULL));
+    srand(42);
 
     if (argc != 7 && argc != 6 && argc != 8)
     {
@@ -39,19 +39,19 @@ int main(int argc, char *argv[])
 
     timer *tstart = iftTic();
     char *images_dir = argv[1];
-    int final_spx = atoi(argv[2]);
+    float final_spx = atof(argv[2]);
     char *model_dir = argv[3];
     iftGFLIMGraphNodeFeature graph_feat = iftGFLIMGraphGetNodeFeature(argv[4]);
     iftGFLIMGraphSpxMethod spx_method = iftGFLIMGraphGetSpxMethod(argv[5]);
     bool use_mask = false;
 
-    int initial_seeds = 0;
+    float initial_seeds = 0;
     if (spx_method == IFT_FLIMGRAPH_TYPE_DISF)
     {
         if (argc < 7)
             iftError("Number of initial seeds is required for DISF method", __func__);
         else
-            initial_seeds = atoi(argv[6]);
+            initial_seeds = atof(argv[6]);
     }
 
     if(argc == 8)
@@ -87,24 +87,51 @@ int main(int argc, char *argv[])
     {
         char *basename = NULL;
         char filename[1024], ext[10];
+        int final_spx_img = (int)final_spx;
+        int initial_seeds_img = (int)initial_seeds;
 
         sprintf(ext, "%s", iftFileExt(fs_imgs->files[i]->path));
         basename = iftFilename(fs_imgs->files[i]->path, ext);
 
-        iftImage *label_img;
         iftImage *img = iftReadImageByExt(fs_imgs->files[i]->path);
 
         iftImage *mask = NULL;
+        int npixels = img->n;
         if(use_mask)
         {
             strcpy(filename, fs_imgs->files[i]->path);
             GetMaskDirInplace(filename);
             mask = iftReadImageByExt(filename);
-        }
 
-        iftGFLIMGraph *graph = iftImageToGFLIMGraph(img, final_spx, initial_seeds, 
+            npixels = 0;
+            for(int p = 0; p < mask->n; p++)
+            {
+                if(mask->val[p] > 0)
+                    npixels++; 
+            }
+        }
+        
+        if(final_spx < 1)
+            final_spx_img = (int)(npixels * final_spx);
+        if(initial_seeds < 1)
+            initial_seeds_img = (int)(npixels * initial_seeds);
+
+        //printf("Train img: %s, spx: %d, seeds: %d\n", basename, final_spx_img, initial_seeds_img);
+        iftImage *label_img = NULL;
+        iftGFLIMGraph *graph = iftImageToGFLIMGraph(img, final_spx_img, initial_seeds_img, 
                                                     &label_img, graph_feat, spx_method,
                                                     mask);
+        
+        /*if(strcmp(basename, "000002_00000014") == 0)
+        {
+            printf("Image %s, num nodes: %d, num edges: %d, num feats: %d\n", 
+                basename, graph->num_nodes, graph->num_edges, graph->num_feats);
+            printf("Node 0: ");
+            for(int f = 0; f < graph->num_feats; f++)
+                printf("%f ", graph->nodes[0].feats[f]);
+            printf("\n");
+        }*/
+
         if(use_mask) iftDestroyImage(&mask);
         
         sprintf(filename, "%s/%s.pgm", labels_dir, basename);

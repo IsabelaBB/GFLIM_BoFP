@@ -28,7 +28,7 @@ int main(int argc, char *argv[])
     int layer = atoi(argv[3]);
     iftGFLIMStrideType stride_type = iftGFLIMGetStrideType(argv[4]);
     iftGFLIMGraphAttention attention_opt = iftGLIMGraphGetAttention(argv[5]);
-    iftGFLIMAggregation aggregation_opt = iftGLIMGraphGetAggregation(argv[6]);
+    iftGFLIMAggregation aggregation_opt = iftGFLIMGraphGetAggregation(argv[6]);
 
     char graph_dir[1024], labels_dir[1024];
 

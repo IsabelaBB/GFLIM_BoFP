@@ -23,7 +23,7 @@ int main(int argc, char *argv[])
     printf("function %s \n", __func__);
 #endif
 
-    srand(time(NULL));
+    srand(42);
 
     if (argc != 4)
     {

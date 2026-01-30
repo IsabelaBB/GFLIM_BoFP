@@ -1,0 +1,20 @@
+add_executable(iftGFLIMCreateNeighbMatricesAndGraphs iftGFLIMCreateNeighbMatricesAndGraphs.c)
+target_link_libraries(iftGFLIMCreateNeighbMatricesAndGraphs ift)
+
+add_executable(iftGFLIMEncodeLayerV3 iftGFLIMEncodeLayerV3.c)
+target_link_libraries(iftGFLIMEncodeLayerV3 ift)
+
+add_executable(iftGFLIMEncodeMergedLayerBatchV3 iftGFLIMEncodeMergedLayerBatchV3.c)
+target_link_libraries(iftGFLIMEncodeMergedLayerBatchV3 ift)
+
+add_executable(iftGFLIMEncodeMergedLayerV3 iftGFLIMEncodeMergedLayerV3.c)
+target_link_libraries(iftGFLIMEncodeMergedLayerV3 ift)
+
+add_executable(iftGFLIMExtractV3 iftGFLIMExtractV3.c)
+target_link_libraries(iftGFLIMExtractV3 ift)
+
+add_executable(iftGFLIMPrecConvertSeeds iftGFLIMPrecConvertSeeds.c)
+target_link_libraries(iftGFLIMPrecConvertSeeds ift)
+
+add_executable(iftGFLIMPrecCreateLayerModel iftGFLIMPrecCreateLayerModel.c)
+target_link_libraries(iftGFLIMPrecCreateLayerModel ift)

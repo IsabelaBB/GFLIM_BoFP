@@ -242,7 +242,7 @@ void ProcessBatch(iftFileSet *fs, int first, int last,
         iftFree(bias_merged);
 
         // process residual connections
-        if(layer > 0)
+        /*if(layer > 0)
         {    
             sprintf(filename, "%s/model/kernels_map.txt", model_dir);
             if (!iftFileExists(filename))
@@ -250,7 +250,7 @@ void ProcessBatch(iftFileSet *fs, int first, int last,
             iftGFLIMSkipConnectionBatch(input, label_imgs, fs, first, last, 
                                         layer + 1, arch, filename, 
                                         model_dir);
-        }
+        }*/
 
         bool use_layer_skip = false;
         for(int i = layer + 1; i < nLayers; i++)
@@ -514,7 +514,7 @@ int main(int argc, char *argv[])
     int batchsize = atoi(argv[7]);
     iftGFLIMStrideType stride_type = iftGFLIMGetStrideType(argv[8]);
     iftGFLIMGraphAttention attention_opt = iftGLIMGraphGetAttention(argv[9]);
-    iftGFLIMAggregation aggregation_opt = iftGLIMGraphGetAggregation(argv[10]);
+    iftGFLIMAggregation aggregation_opt = iftGFLIMGraphGetAggregation(argv[10]);
     bool kernel_removal = atoi(argv[11]);
 
     // parameters related to output data

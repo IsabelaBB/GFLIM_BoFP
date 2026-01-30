@@ -108,7 +108,6 @@ char *iftGFLIMDecoderToString(iftGFLIMDecoderType decoder)
 void ProcessBatch(iftFileSet *fs, int first, int last, 
                 char *graphs_dir, char *labels_dir, char *model_dir, 
                 iftGFLIMArch *arch, int nLayers, 
-                iftGFLIMStrideType stride_type,
                 iftGFLIMGraphAttention attention_opt, 
                 iftGFLIMGraphNodeFeature node_feat,
                 bool save_intermediate, 
@@ -233,21 +232,30 @@ void ProcessBatch(iftFileSet *fs, int first, int last,
             }
         }
 
-        for (int k = 0; k <= last - first; k++)
+        if(layer == 0 || arch->layer[layer].pool_stride > 1)
         {
-            iftImage *orig_img = iftReadImageByExt(fs->files[k + first]->path);
-            neighbors[k] = iftGFLIMConstructGraphRelation(orig_img, label_imgs->val[k], node_feat, 
-                                                    iftMax(arch->layer[layer].kernel_size, arch->layer[layer].pool_size));
-            iftDestroyImage(&orig_img);
+            for (int k = 0; k <= last - first; k++)
+            {
+                iftImage *orig_img = iftReadImageByExt(fs->files[k + first]->path);
+                neighbors[k] = iftGFLIMConstructGraphRelation(orig_img, label_imgs->val[k], node_feat, 
+                                                        iftMax(arch->layer[layer].kernel_size, arch->layer[layer].pool_size));
+                iftDestroyImage(&orig_img);
+            }
         }
-        
+
         iftGFLIMEncodeLayerBatchV2(input, Kmerged, arch->layer[layer], 
-                                label_imgs, bias_merged, stride_type, 
+                                bias_merged, 
                                 attention_opt, true_labels, 
-                                neighbors);
-        
-        for (int k = 0; k <= last - first; k++)
-            iftDestroyMatrix(&neighbors[k]);
+                                neighbors, kernel_neighbors, pool_neighbors);
+
+        /* stride */
+        iftGFLIMStrideBatch(input, arch->layer[layer], label_imgs, IFT_GFLIM_GRAPHSTRIDE);
+
+        if(layer == arch->nlayers-1 || arch->layer[layer].pool_stride > 1)
+        {
+            for (int k = 0; k <= last - first; k++)
+                iftDestroyMatrix(&neighbors[k]);
+        }
         
         iftFree(true_labels); true_labels = NULL;
         iftDestroyMatrix(&Kmerged);
@@ -488,11 +496,11 @@ int main(int argc, char *argv[])
 {
     timer *tstart;
 
-    if (argc != 15)
+    if (argc != 14)
     {
         iftError("Usage: iftGFLIMExtract <P1> <P2> <P3> <P4> <P5> "
                                         "<P6> <P7> <P8> <P9> <P10> "
-                                        "<P11> <P12> <P13> <P14> \n"
+                                        "<P11> <P12> <P13> \n"
                 // parameters related to input data
                 "[ 1] Images directory \n"
                 "[ 2] Graphs directory \n"
@@ -502,14 +510,13 @@ int main(int argc, char *argv[])
                 "[ 5] Architecture file \n"
                 "[ 6] Number of layers \n"
                 "[ 7] Batch size (> 0) \n"
-                "[ 8] Stride type (none, image-based, graph-based) \n"
-                "[ 9] attention (NONE, NODE_SIZE, NEIGHB_SIMIL, NEIGHB_SIZE) \n"
-                "[10] graph node feature (MEAN, SUM) \n"
+                "[ 8] attention (NONE, NODE_SIZE, NEIGHB_SIMIL, NEIGHB_SIZE) \n"
+                "[ 9] graph node feature (MEAN, SUM) \n"
                 // parameters related to output data
-                "[11] Save graphs and labels after each layer (1/0) \n"
-                "[12] Layers to save activations (1,2,..) \n"
-                "[13] Layers to decode (1,2,..) \n"
-                "[14] Decoders (tristate, hybrid, graph-adaptive, gaussian) \n"
+                "[10] Save graphs and labels after each layer (1/0) \n"
+                "[11] Layers to save activations (1,2,..) \n"
+                "[12] Layers to decode (1,2,..) \n"
+                "[13] Decoders (tristate, hybrid, graph-adaptive, gaussian) \n"
                 "argc: %d", "main", argc);
     }
     tstart = iftTic();
@@ -524,18 +531,17 @@ int main(int argc, char *argv[])
     iftGFLIMArch *arch = iftReadGFLIMArch(argv[5]);
     int nLayers = atoi(argv[6]);
     int batchsize = atoi(argv[7]);
-    iftGFLIMStrideType stride_type = iftGFLIMGetStrideType(argv[8]);
-    iftGFLIMGraphAttention attention_opt = iftGLIMGraphGetAttention(argv[9]);
-    iftGFLIMGraphNodeFeature node_feat = iftGFLIMGraphGetNodeFeature(argv[10]);
+    iftGFLIMGraphAttention attention_opt = iftGLIMGraphGetAttention(argv[8]);
+    iftGFLIMGraphNodeFeature node_feat = iftGFLIMGraphGetNodeFeature(argv[9]);
     
     // parameters related to output data
-    bool save_intermediate = atoi(argv[11]); // save graphs and labels after each layer
+    bool save_intermediate = atoi(argv[10]); // save graphs and labels after each layer
     int nLayers_saveAct = 0;
-    int *list_int_act = SplitIntList(argv[12], &nLayers_saveAct); // layers to save activations
+    int *list_int_act = SplitIntList(argv[11], &nLayers_saveAct); // layers to save activations
     int nLayers_decode = 0;
-    int *list_int_decode = SplitIntList(argv[13], &nLayers_decode); // layers to decode
+    int *list_int_decode = SplitIntList(argv[12], &nLayers_decode); // layers to decode
     int nDecoders = 0;
-    iftGFLIMDecoderType *decoders = SplitDecoderList(argv[14], &nDecoders); // decoders
+    iftGFLIMDecoderType *decoders = SplitDecoderList(argv[13], &nDecoders); // decoders
 
     bool *layers_saveAct = (bool *)iftAlloc(nLayers, sizeof(bool));
     for(int i = 0; i < nLayers_saveAct; i++){
@@ -576,7 +582,7 @@ int main(int argc, char *argv[])
         fflush(stdout);
 
         ProcessBatch(fs_imgs, first, last, graphs_dir, labels_dir, model_dir, 
-                     arch, nLayers, stride_type,
+                     arch, nLayers,
                      attention_opt, node_feat,
                      save_intermediate, layers_saveAct, layers_decode,
                      decoders, nDecoders, finer_layers);
@@ -589,7 +595,7 @@ int main(int argc, char *argv[])
         fflush(stdout);
 
         ProcessBatch(fs_imgs, first, last, graphs_dir, labels_dir, model_dir, 
-                     arch, nLayers, stride_type,
+                     arch, nLayers,
                      attention_opt, node_feat,
                      save_intermediate, layers_saveAct, layers_decode,
                      decoders, nDecoders, finer_layers);

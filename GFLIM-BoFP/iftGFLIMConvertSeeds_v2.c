@@ -188,7 +188,7 @@ int main(int argc, char *argv[]) {
     int kernel_size = atoi(argv[4]);
     int nfpts_per_label = atoi(argv[5]);
     iftGFLIMGraphAttention attention_opt = iftGLIMGraphGetAttention(argv[6]);
-    iftGFLIMAggregation aggregation_opt = iftGLIMGraphGetAggregation(argv[7]);
+    iftGFLIMAggregation aggregation_opt = iftGFLIMGraphGetAggregation(argv[7]);
     
     if(!iftDirExists(model_dir))
       iftError("Model directory does not exist: %s", "main", model_dir);

@@ -63,11 +63,14 @@ int main(int argc, char *argv[])
         {   /* encode layer using its kernels */
             iftMatrix *K = iftReadMatrix(filename);
             ncols += K->ncols;
+            //printf("%d kernels with %d features from %s \n", K->ncols, K->nrows, basename);
             if (nrows == 0) nrows = K->nrows;
             else
             {
                 if (nrows != K->nrows)
-                    iftWarning("Cannot merge kernels with different labels vector sizes. Adopting one kernel per marked image.", "main");
+                    iftWarning("Cannot merge kernels with different labels vector sizes. "
+                        "Adopting one kernel per marked image.", 
+                        "main");
             }
         }
         iftFree(basename);

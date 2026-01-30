@@ -164,6 +164,11 @@ int main(int argc, char *argv[])
                         num_superpixels, A, mimg,
                         label_img, graph_feat, NULL);
             break;
+        case IFT_FLIMGRAPH_FEATURE_MEAN_CONCAT_STD_SIZE:
+            graph = iftComputeGFLIMGraphFeaturesMeanConcatStdSize(
+                        num_superpixels, A, mimg,
+                        label_img);
+            break;
         default:
             iftError("Invalid graph feature type %d", __func__, graph_feat);
         }

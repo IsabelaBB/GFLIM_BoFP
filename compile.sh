@@ -7,8 +7,7 @@ make IFT_GPU=$1 iftCreateGFLIMGraph iftGFLIMConvertSeeds \
         iftGFLIMDecodeLayer iftGFLIMExtract iftGFLIMExtract2 \
         iftGFLIMWriteActivations iftWriteSeedsVectors \
         iftRGBBucketDescriptor iftCreateGFLIMGraphFromLabels \
-        iftGraphToMimg iftGFLIMActivDataSet iftGFLIMDataSetActiv \
-        iftGFLIMExtractV2
+        iftGraphToMimg iftGFLIMActivDataSet iftGFLIMDataSetActiv 
 cd GFLIM
 bash compile.sh $1
 cd ..
@@ -21,4 +20,6 @@ cd ..
 cd M-GFLIM-BoFP
 bash compile.sh $1
 cd ..
-
+cd GFLIM_BoFP_precompGraph
+bash compile.sh $1
+cd ..

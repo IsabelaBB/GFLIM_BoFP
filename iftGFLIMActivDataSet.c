@@ -72,8 +72,7 @@ int main(int argc, char *argv[])
              "[2] path of the original images\n"
              "[3] output_status: Status for the output dataset (1: Train, 2: Test)\n"
              "[4] (optional) average activations and sort superpixels (1: average all channels, filename: average per class)\n"
-             "argc = %d", argc,
-             "main");
+             "argc = %d", __func__, argc);
 
   tstart = iftTic();
 
@@ -108,17 +107,18 @@ int main(int argc, char *argv[])
   int first = 0;
   int last = fs->n - 1;
   int nclasses = iftFileSetLabelsNumber(fs);
+  
   char *outBasename = iftBasename(argv[1]);
   iftRightTrim(outBasename, '/');
 
   //-----
   iftGFLIMGraph *graph0 = iftReadGFLIMGraph(fs->files[0]->path);
   int nfeats = graph0->num_feats * graph0->num_nodes;
+  printf("Number of features per graph: %d (%d nodes with %d features each)\n", nfeats, graph0->num_nodes, graph0->num_feats);
   iftDestroyGFLIMGraph(&graph0);
   //-----
 
   iftDataSet *Z = iftCreateDataSet(fs->n, nfeats);
-
   iftFileSet *fsRefData = iftCreateFileSet(fs->n);
 
   Z->nclasses = nclasses;
@@ -130,15 +130,12 @@ int main(int argc, char *argv[])
     fprintf(fp, "id: %d image: %s\n", i, fs->files[i]->path);
   }
   fclose(fp);
+  printf("File '%s' created\n", filename);
 
   for (int i = first; i <= last; i++)
   {
     char *basename = iftFilename(fs->files[i]->path, ".json");
-    //printf("Processing file %s: %d of %ld files\r", basename, i + 1, fs->n);
-    fflush(stdout);
-
     iftGFLIMGraph *graph = iftReadGFLIMGraph(fs->files[i]->path);
-
     Z->sample[i].id = i;
     Z->sample[i].truelabel = fs->files[i]->label;
     

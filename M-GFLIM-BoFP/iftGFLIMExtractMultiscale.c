@@ -851,7 +851,7 @@ int main(int argc, char *argv[])
     int batchsize = atoi(argv[7]);
     iftGFLIMStrideType stride_type = iftGFLIMGetStrideType(argv[8]);
     iftGFLIMGraphAttention attention_opt = iftGLIMGraphGetAttention(argv[9]);
-    iftGFLIMAggregation aggregation_opt = iftGLIMGraphGetAggregation(argv[10]);
+    iftGFLIMAggregation aggregation_opt = iftGFLIMGraphGetAggregation(argv[10]);
     bool kernel_removal = atoi(argv[11]);
 
     // parameters related to output data

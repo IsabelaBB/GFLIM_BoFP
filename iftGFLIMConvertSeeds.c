@@ -40,7 +40,7 @@ int main(int argc, char *argv[]) {
       else{
         kernel_size = atoi(argv[4]);
         attention_opt = iftGLIMGraphGetAttention(argv[5]);
-        aggregation_opt = iftGLIMGraphGetAggregation(argv[6]);
+        aggregation_opt = iftGFLIMGraphGetAggregation(argv[6]);
       }
     }
 
@@ -91,6 +91,7 @@ int main(int argc, char *argv[]) {
     for (int i = 0; i < fs->n; i++)
     {
         char *basename = iftFilename(fs->files[i]->path, "-seeds.txt");
+        //printf("Processing image: %s, index %d\n", basename, i);
         
         // read the superpixel image
         sprintf(filename, "%s/labels0/%s%s", model_dir, basename, ".pgm");
@@ -101,7 +102,10 @@ int main(int argc, char *argv[]) {
         iftLabeledSet *S = iftReadSeeds(label_img, fs->files[i]->path);
         
         // convert image seeds to graph seeds
-        iftLabeledSet *graph_seeds = iftGFLIMImageMarkersToGraphMarkers(label_img, S, IFT_GFLIM_NOSTRIDE, label_img->xsize, label_img->ysize);
+        iftLabeledSet *graph_seeds = iftGFLIMImageMarkersToGraphMarkers(label_img, S, 
+                                                                        IFT_GFLIM_NOSTRIDE, 
+                                                                        label_img->xsize, 
+                                                                        label_img->ysize);
         iftDestroyLabeledSet(&S);
 
         if(nfpts_per_marker != -1) // perform a k-means per marker

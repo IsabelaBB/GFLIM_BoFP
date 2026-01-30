@@ -9,15 +9,14 @@ int main(int argc, char *argv[])
 {
     timer *tstart;
 
-    if (argc != 8)
-        iftError("Usage: iftGFLIMGSEncodeMergedLayer <P1> <P2> <P3> <P4> <P5> <P6> <P7> \n"
+    if (argc != 7)
+        iftError("Usage: iftGFLIMGSEncodeMergedLayer <P1> <P2> <P3> <P4> <P5> <P6> \n"
                  "[1] model directory \n"
                  "[2] architecture of the network (.json) \n"
                  "[3] layer number (1, 2, 3) \n"
-                 "[4] stride type (none, image-based, graph-based) \n"
-                 "[5] attention (NONE, NODE_SIZE, NEIGHB_SIMIL, NEIGHB_SIZE, ...) \n"
-                 "[6] graph node feature (MEAN, SUM) \n"
-                 "[7] original images path (used to compute node neighbors) --- it must have at least the training images \n",
+                 "[4] attention (NONE, NODE_SIZE, NEIGHB_SIMIL, NEIGHB_SIZE, ...) \n"
+                 "[5] graph node feature (MEAN, SUM) \n"
+                 "[6] original images path (used to compute node neighbors) --- it must have at least the training images \n",
                  "main");
 
     tstart = iftTic();
@@ -25,11 +24,10 @@ int main(int argc, char *argv[])
     char *model_dir = argv[1];
     iftGFLIMArch *arch = iftReadGFLIMArch(argv[2]);
     int layer = atoi(argv[3]);
-    iftGFLIMStrideType stride_type = iftGFLIMGetStrideType(argv[4]);
-    iftGFLIMGraphAttention attention_opt = iftGLIMGraphGetAttention(argv[5]);
-    iftGFLIMGraphNodeFeature node_feat = iftGFLIMGraphGetNodeFeature(argv[6]);
-    char *orig_images_path = argv[7];
-    
+    iftGFLIMGraphAttention attention_opt = iftGLIMGraphGetAttention(argv[4]);
+    iftGFLIMGraphNodeFeature node_feat = iftGFLIMGraphGetNodeFeature(argv[5]);
+    char *orig_images_path = argv[6];
+
     if (layer < 1)
         iftError("Invalid layer number: %d", "main", layer);
 
@@ -48,7 +46,7 @@ int main(int argc, char *argv[])
     iftMakeDir(output_dir);
 
     // set labels directory
-    if (stride_type != IFT_GFLIM_NOSTRIDE)
+    if (arch->layer[layer - 1].pool_stride > 1)
     {
         sprintf(labels_dir, "%s/labels%d", model_dir, layer - 1);
         if (!iftDirExists(labels_dir))
@@ -127,26 +125,43 @@ int main(int argc, char *argv[])
 
         // encode layer
         iftGFLIMGraph *output_graph = iftGFLIMEncodeLayerV2(graph, Kmerged, bias_merged, 
-                                                        arch->layer[layer - 1], stride_type, 
-                                                        input_labels, &output_labels, 
+                                                        arch->layer[layer - 1], 
                                                         attention_opt, true_labels, 
                                                         neighbors);
         iftDestroyMatrix(&neighbors);
-        
-        iftDestroyImage(&input_labels);
-        iftDestroyGFLIMGraph(&graph);
 
-        /* save output */
-        if (stride_type != IFT_GFLIM_NOSTRIDE)
+        // if pooling with stride was applied, generate the output superpixel labels
+        if (arch->layer[layer - 1].pool_stride > 1)
         {
+            iftGFLIMGraph *pooling_graph = output_graph;
+            output_graph = NULL;
+            int nodes_map[pooling_graph->num_nodes];
+            output_labels = iftCreateImage(input_labels->xsize, input_labels->ysize, input_labels->zsize);
+            output_graph = iftGFLIMGraphStride(pooling_graph, arch->layer[layer - 1].pool_stride, nodes_map);
+            for (int j = 0; j < input_labels->n; j++)
+            {
+                int spx_label = input_labels->val[j] - 1;
+                if(spx_label < 0)
+                    output_labels->val[j] = 0;
+                else
+                    output_labels->val[j] = nodes_map[spx_label] + 1;
+            }
+            iftDestroyGFLIMGraph(&pooling_graph);
+            
+            // save superpixel labels
             sprintf(filename, "%s/%s.pgm", out_labels_dir, basename);
             iftWriteImageByExt(output_labels, filename);
             iftDestroyImage(&output_labels);
         }
+        
+        iftDestroyImage(&input_labels);
+        iftDestroyGFLIMGraph(&graph);
 
+        /* save graph (layer output) */
         sprintf(filename, "%s/%s.json", output_dir, basename);
         iftWriteGFLIMGraph(output_graph, filename);
         iftDestroyGFLIMGraph(&output_graph);
+        
         iftFree(basename);
     }
 

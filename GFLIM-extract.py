@@ -71,7 +71,12 @@ print("Model directory: {}".format(args.model_dir))
 #print("Arguments: {}".format(args))
 verifyArgs(args)
 
-vals = [args.img_dir, args.model_dir, args.arch_file, args.nlayers, args.graph_feat, args.spx_alg, args.final_spx, args.decoder, args.batch_size, args.stride, args.attention, args.aggregation, 1 if args.dropout else 0, args.init_seeds]
+vals = [args.img_dir, args.model_dir, 
+        args.arch_file, args.nlayers, args.batch_size, args.stride, 
+        args.attention, args.aggregation, 1 if args.dropout else 0, 
+        args.graph_feat, args.spx_alg, args.final_spx, 
+        0, -1, args.nlayers, args.decoder, 
+        args.init_seeds, 0]
 line = "{} {}".format("{}/iftGFLIMExtract".format(args.path), " ".join([str(i) for i in vals]))
 os.system(line)
 #print(line)

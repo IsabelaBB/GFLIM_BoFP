@@ -118,6 +118,7 @@ int main(int argc, char *argv[]) {
           // perform a k-means per marker and reduce the number of seeds
           iftLabeledSet *T = iftGFLIMSelectClusterCenters(graph, graph_seeds, kernel_size, nfpts_per_marker, attention_opt, dimReduction, ncomponents, aggregation_opt);
           iftDestroyLabeledSet(&graph_seeds);
+
           graph_seeds = T;
           T = NULL;
           iftDestroyGFLIMGraph(&graph);

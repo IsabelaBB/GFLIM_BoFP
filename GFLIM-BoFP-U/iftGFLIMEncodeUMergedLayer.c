@@ -21,7 +21,7 @@ iftGFLIMGraph *iftGFLIMUEncodeLayer(iftGFLIMGraph *graph,
 
     iftMImage *activ_relu = NULL;
     if (layer.relu)
-        activ_relu = iftLeakyMReLU(activ, bias, true, 0.01f);
+        activ_relu = iftMReLU(activ, bias, true);
     else
     {
         if (bias != NULL)

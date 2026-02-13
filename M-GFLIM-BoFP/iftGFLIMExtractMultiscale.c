@@ -2,7 +2,7 @@
 
 /**
  * \file iftGFLIMExtract.c
- * \brief Extract features from a set of images and decode from a GFLIM or a GFLIM-BoFP trained model.
+ * \brief Use a M-GFLIM-BoFP trained model to extract features from a set of graphs and superpixel maps and decode them.
  */
 
 char* read_file_scales(const char* filename) { 
@@ -428,7 +428,6 @@ iftGFLIMDecoderType *SplitDecoderList(char *str, int *nvalues)
     return values;
 }
 
-
 char *iftGFLIMDecoderToString(iftGFLIMDecoderType decoder)
 {
     char *decoder_name = iftAllocCharArray(20);
@@ -610,9 +609,9 @@ void ProcessBatch(iftFileSet *fs, int first, int last,
     int ngraphs_batch = last - first + 1;
 
     bool require_label_imgs0 = false;
-    for (int layer = 0; layer < nLayers; layer++)
+    for (int l = 0; l < nLayers; l++)
     {
-        if(layers_saveActivations[layer] || layers_decode[layer]){
+        if(layers_saveActivations[l] || layers_decode[l]){
             require_label_imgs0 = true;
             break;
         }
@@ -625,11 +624,10 @@ void ProcessBatch(iftFileSet *fs, int first, int last,
 
     if(require_label_imgs0)
         label_imgs0 = iftCreateImageArray(ngraphs_batch);
-    
+
     /* load graphs and labels of the first scale*/
-    #pragma omp parallel for
-    for (int k = 0; k <= last - first; k++)
-    {
+    //#pragma omp parallel for
+    for (int k = 0; k < ngraphs_batch; k++){
         int i = k + first;
         char ext[10], filename[1024];
         sprintf(ext, "%s", iftFileExt(fs->files[i]->path));
@@ -688,9 +686,8 @@ void ProcessBatch(iftFileSet *fs, int first, int last,
         
     iftFree(true_labels);
 
-
     /* extract features for each layer */
-    for (int layer = 1; layer < nLayers; layer++)
+    for (int l = 1; l < nLayers; l++)
     {
         iftMatrix *Kmerged = NULL;
         float *bias_merged = NULL;
@@ -698,17 +695,17 @@ void ProcessBatch(iftFileSet *fs, int first, int last,
         char filename[1024];
         int nkernels = 0;
 
-        sprintf(filename, "%s/model/conv%d-bias.txt", model_dir, layer + 1);
+        sprintf(filename, "%s/model/conv%d-bias.txt", model_dir, l + 1);
         if (iftFileExists(filename)) // is there a bias?
         {
             /* Load kernel and bias */
-            sprintf(filename, "%s/model/conv%d", model_dir, layer + 1);
+            sprintf(filename, "%s/model/conv%d", model_dir, l + 1);
             iftGFLIMLoadMergedModel(filename, &Kmerged, &bias_merged);
         }
         else
         {
             /* Load kernel */
-            sprintf(filename, "%s/model/conv%d-kernels.npy", model_dir, layer + 1);
+            sprintf(filename, "%s/model/conv%d-kernels.npy", model_dir, l + 1);
             if (!iftFileExists(filename))
                 iftError("Model file not found: %s", __func__, filename);
             Kmerged = iftReadMatrix(filename);
@@ -717,7 +714,7 @@ void ProcessBatch(iftFileSet *fs, int first, int last,
             /* Load mean and standard deviation */
             float *mean = iftAllocFloatArray(ninput_channels);
             float *stdev = iftAllocFloatArray(ninput_channels);
-            sprintf(filename, "%s/model/conv%d", model_dir, layer + 1);
+            sprintf(filename, "%s/model/conv%d", model_dir, l + 1);
             iftReadMeanStdev(filename, mean, stdev, ninput_channels);
 
             /* Normalization (because there is no bias)*/
@@ -732,32 +729,32 @@ void ProcessBatch(iftFileSet *fs, int first, int last,
 
         /* Load labels indicating class (label) per channel */
         if ((attention_opt != IFT_FLIMGRAPH_ATTENTION_NONE && bias_merged != NULL) ||
-            layers_decode[layer] || layers_saveActivations[layer])
+            layers_decode[l] || layers_saveActivations[l])
         {
-            sprintf(filename, "%s/model/conv%d-labels.txt", model_dir, layer + 1);
+            sprintf(filename, "%s/model/conv%d-labels.txt", model_dir, l + 1);
             if (!iftFileExists(filename))
                 iftError("File %s does not exist", __func__, filename);
             true_labels = iftGFLIMLoadKernelLabels(filename, &nkernels);
         }
 
-        iftGFLIMEncodeLayerBatch(input, Kmerged, arch->layer[layer], label_imgs, bias_merged, stride_type, attention_opt, true_labels, aggregation_opt, kernel_removal);
+        iftGFLIMEncodeLayerBatch(input, Kmerged, arch->layer[l], label_imgs, bias_merged, stride_type, attention_opt, true_labels, aggregation_opt, kernel_removal);
         iftFree(true_labels); true_labels = NULL;
         iftDestroyMatrix(&Kmerged);
         iftFree(bias_merged);
 
         // process residual connections
-        if(layer > 0)
+        if(l > 0)
         {    
             sprintf(filename, "%s/model/kernels_map.txt", model_dir);
             if (!iftFileExists(filename))
                 iftError("Model file not found: %s", __func__, filename);
-            iftGFLIMSkipConnectionBatch(input, label_imgs, fs, first, last, layer + 1, arch, filename, model_dir);
+            iftGFLIMSkipConnectionBatch(input, label_imgs, fs, first, last, l + 1, arch, filename, model_dir);
         }
 
         use_layer_skip = false;
-        for(int i = layer + 1; i < nLayers; i++)
+        for(int i = l + 1; i < nLayers; i++)
         {
-            if(arch->layer[i].skip_connection[layer] > 0)
+            if(arch->layer[i].skip_connection[l] > 0)
             {
                 use_layer_skip = true;
                 break;
@@ -766,15 +763,15 @@ void ProcessBatch(iftFileSet *fs, int first, int last,
 
         // save intermediate graphs and labels
         if (save_intermediate || use_layer_skip)
-            SaveIntermediate(model_dir, layer, input, label_imgs, ngraphs_batch, basenames);
+            SaveIntermediate(model_dir, l, input, label_imgs, ngraphs_batch, basenames);
 
         // save activations
-        if(layers_saveActivations[layer])
-            SaveActivates(model_dir, layer, input, label_imgs, label_imgs0, ngraphs_batch, basenames, finer_layers, true_labels, &nkernels);
+        if(layers_saveActivations[l])
+            SaveActivates(model_dir, l, input, label_imgs, label_imgs0, ngraphs_batch, basenames, finer_layers, true_labels, &nkernels);
         
         // decode layer
-        if(layers_decode[layer])
-            DecodeLayer(model_dir, layer, input, label_imgs, label_imgs0, ngraphs_batch, basenames, finer_layers, true_labels, &nkernels, nDecoders, decoders);
+        if(layers_decode[l])
+            DecodeLayer(model_dir, l, input, label_imgs, label_imgs0, ngraphs_batch, basenames, finer_layers, true_labels, &nkernels, nDecoders, decoders);
         
         iftFree(true_labels);
     }
@@ -782,20 +779,19 @@ void ProcessBatch(iftFileSet *fs, int first, int last,
     // delete folders
     if(!save_intermediate)
     {
-        for (int layer = 1; layer <= nLayers; layer++)
+        for (int l = 1; l <= nLayers; l++)
         {
             char dir[1024];
-            sprintf(dir, "%s/layer%d", model_dir, layer);
+            sprintf(dir, "%s/layer%d", model_dir, l);
             iftRemoveDir(dir);
-            sprintf(dir, "%s/labels%d", model_dir, layer);
+            sprintf(dir, "%s/labels%d", model_dir, l);
             iftRemoveDir(dir);
         }
     }
 
-    for (int k = 0; k <= last - first; k++)
+    for (int k = 0; k < ngraphs_batch; k++)
         iftFree(basenames[k]);
     iftFree(basenames);
-
     iftDestroyImageArray(&label_imgs);
     iftDestroyImageArray(&label_imgs0);
     iftDestroyGFLIMGraphArray(&input);

@@ -94,6 +94,7 @@ int main(int argc, char *argv[])
         // create the kernels, bias and truelabels for the current graph
         float *bias;
         int *truelabel;
+        //iftMatrix *kernels = iftGFLIMCreateReducedLayerModel(graph, S, label_img0, label_img, arch->layer[layer - 1], arch->stdev_factor, stride_type, &bias, &truelabel, attention_opt, aggregation_opt);
         iftMatrix *kernels = iftGFLIMCreateLayerModel(graph, S, label_img0, label_img, arch->layer[layer - 1], arch->stdev_factor, stride_type, &bias, &truelabel, attention_opt, aggregation_opt);
 
         /* save kernels, biases, and truelabels of the kernels */

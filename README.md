@@ -34,7 +34,7 @@ In GFLIM BoFP, you can either extract neighborhood information based on activati
 
 ### Pre-processing
 
-For all versions, use [iftCreateGFLIMGraph](iftCreateGFLIMGraph.c) to convert images into graphs using superpixel segmentation. Or you can use your own tool for segmentation and convert the superpixel maps into graphs using [iftCreateGFLIMGraphFromLabels](iftCreateGFLIMGraphFromLabels.c). Alternatively, [iftGFLIMCreateNeighbMatricesAndGraphs](GFLIM_BoFP_precompGraph/iftGFLIMCreateNeighbMatricesAndGraphs) create graphs from images and their neighborhood matrices for all layers based on color similarity (i.e., when `kernel_neighbors`, `pool_neighbors`, and/or `kernel_neighbors` are set to `color`).
+For all versions, use [iftCreateGFLIMGraph](iftCreateGFLIMGraph.c) to convert images into graphs using superpixel segmentation. Or you can use your own tool for segmentation and convert the superpixel maps into graphs using [iftCreateGFLIMGraphFromLabels](iftCreateGFLIMGraphFromLabels.c). Alternatively, [iftGFLIMCreateNeighbMatricesAndGraphs](GFLIM_BoFP_precompGraph/iftGFLIMCreateNeighbMatricesAndGraphs.c) create graphs from images and their neighborhood matrices for all layers based on color similarity (i.e., when `kernel_neighbors`, `pool_neighbors`, and/or `kernel_neighbors` are set to `color`).
 
 ### Seeds creation
 
@@ -50,7 +50,7 @@ Use [CreateSeedsFromAllPix](CreateSeedsFromAllPix.py) to create text files from 
 
 #### Creating graph seeds
 
-With the training graphs (and their respective superpixel images), the image seeds, and a architecture file (see [arch](archs/arch.json)), graph seed can be created using [iftGFLIMConvertSeeds](iftGFLIMConvertSeeds.c), [iftGFLIMConvertSeeds_v2](GFLIM-BoFP/iftGFLIMConvertSeeds_v2.c), or [iftGFLIMPrecConvertSeeds](GFLIM_BoFP_precompGraph/iftGFLIMPrecConvertSeeds.c). The standard option is [iftGFLIMConvertSeeds](iftGFLIMConvertSeeds.c).
+With the training graphs (and their respective superpixel images), the image seeds, and a architecture file (see [arch.json](https://github.com/IsabelaBB/LibIFT/blob/main/Datasets/archs/arch.json)), graph seed can be created using [iftGFLIMConvertSeeds](iftGFLIMConvertSeeds.c), [iftGFLIMConvertSeeds_v2](GFLIM-BoFP/iftGFLIMConvertSeeds_v2.c), or [iftGFLIMPrecConvertSeeds](GFLIM_BoFP_precompGraph/iftGFLIMPrecConvertSeeds.c). The standard option is [iftGFLIMConvertSeeds](iftGFLIMConvertSeeds.c).
 
 ### Training
 
@@ -78,7 +78,7 @@ Alternatively, you can also extract features from the training graphs before the
 
 #### Merge layer models
 
-- [iftGFLIMMergeLayerModels](GFLIM-BoFP/iftGFLIMMergeLayerModels.c):
+- [iftGFLIMMergeLayerModels](GFLIM-BoFP/iftGFLIMMergeLayerModels.c)
 
 #### Encode merged models
  
@@ -120,4 +120,4 @@ After training use the following programs to extract information from the valida
 
 ### Train an SVM and using it to classify
 
-Use [iftGFLIMActivDataSet](iftGFLIMActivDataSet) to convert the graphs created with a GFLIM-based model into vectors and write them in a .zip file in `iftDataset` format. Then, train an SVM with [iftSupTrainBySVM](Classification/iftSupTrainBySVM.c) and classify using [iftSupTrainBySVM](Classification/iftSupTrainBySVM.c). The training and classification use the aforementioned .zip file.
+Use [iftGFLIMActivDataSet](iftGFLIMActivDataSet.c) to convert the graphs created with a GFLIM-based model into vectors and write them in a .zip file in `iftDataset` format. Then, train an SVM with [iftSupTrainBySVM](https://github.com/IsabelaBB/Classification/blob/main/iftSupTrainBySVM.c) and classify using [iftClassifyBySVM](https://github.com/IsabelaBB/Classification/blob/main/iftClassifyBySVM.c), both from [Classification](https://github.com/IsabelaBB/Classification) module. The training and classification use the aforementioned .zip file.

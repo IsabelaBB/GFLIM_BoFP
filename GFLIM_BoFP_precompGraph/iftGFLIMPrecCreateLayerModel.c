@@ -95,7 +95,7 @@ int main(int argc, char *argv[])
         if(strcmp(stride_neighbors, "color") == 0)
         {
             if (label_img->xsize != label_img0->xsize || label_img->ysize != label_img0->ysize)
-                iftGFLIMUpdateMarkersFromPrecomputedGraphs(&S, arch->layer[layer - 1], label_img, label_img0);
+                iftGFLIMUpdateMarkersFromPrecomputedGraphs(&S, label_img, label_img0);
         }else{
             if (graph->num_nodes != iftMaximumValue(label_img0))
                 iftGFLIMUpdateGraphMarkers(S, label_img, label_img0);

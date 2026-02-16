@@ -1,9 +1,8 @@
 /**
  * \file iftGFLIMWriteKernelsCorrespondence.c
  * \brief Given the markers and superpixel images of two scales, it creates the correspondence between the kernels of these scales.
- * \warning The markers coordinates must be in "*-seeds_graph.txt" files.
+ * \warning The markers coordinates must be in "imagename-seeds_graph.txt" files.
  */
-
 
 #include "ift.h"
 
@@ -11,7 +10,7 @@ int main(int argc, char *argv[]) {
     timer *tstart;
 
     if (argc != 5 && argc != 6)
-      iftError("Usage: iftGFLIMMergeScales <P1> <P2> <P3> <P4> [<P5>]\n"
+      iftError("Usage: iftGFLIMWriteKernelsCorrespondence P1 P2 P3 P4 [P5]\n"
 	        "P1: markers folder scale 0\n"
 	        "P2: superpixels folder scale 0\n"
             "P3: superpixels folder scale i\n"

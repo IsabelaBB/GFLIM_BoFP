@@ -5,6 +5,8 @@
  * \brief Create the model for a given layer using GFLIM-BoFP.
  * It creates kernels, biases, and true labels per training image.
  * \note The kernels, biases, and true labels are saved in the model directory per training image. To merge them use iftGFLIMMergeLayerModel.
+ * \note Used when kernel_neighbors and stride_neighbors are "act" (i.e., computed using activation information).
+ * \author Isabela Borlido
  */
 
 int main(int argc, char *argv[])
@@ -12,13 +14,13 @@ int main(int argc, char *argv[])
     timer *tstart;
 
     if (argc != 7)
-        iftError("Usage: iftGFLIMGSCreateLayerModel <P1> <P2> <P3> <P4> <P5> <P6> \n"
+        iftError("Usage: iftGFLIMCreateLayerModel P1 P2 P3 P4 P5 P6 \n"
                  "P1: model directory\n"
                  "P2: network architecture (.json)\n"
                  "P3: layer number (1, 2, 3, etc)\n"
-                 "P4: stride type (none, image-based, graph-based) \n"
-                 "P5: attention (NONE, NODE_SIZE, NEIGHB_SIMIL, NEIGHB_SIZE,...) \n"
-                 "P6: aggregation strategy (CONCAT, MEAN, WMEAN) \n",
+                 "P4: stride type. See iftGFLIMStrideType at iftGFLIM_BoFP.h for more details \n"
+                 "P5: attention. See iftGFLIMGraphAttention at iftGFLIMGraph.h for more details \n"
+                 "P6: aggregation. See iftGFLIMAggregation at iftGFLIMGraph.h for more details \n",
                  "main");
 
     tstart = iftTic();

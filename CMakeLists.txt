@@ -1,8 +1,17 @@
 add_executable(iftCreateGFLIMGraph iftCreateGFLIMGraph.c)
 target_link_libraries(iftCreateGFLIMGraph ift)
 
+add_executable(iftCreateGFLIMGraphFromLabels iftCreateGFLIMGraphFromLabels.c)
+target_link_libraries(iftCreateGFLIMGraphFromLabels ift)
+
+add_executable(iftGFLIMActivDataSet iftGFLIMActivDataSet.c)
+target_link_libraries(iftGFLIMActivDataSet ift)
+
 add_executable(iftGFLIMConvertSeeds iftGFLIMConvertSeeds.c)
 target_link_libraries(iftGFLIMConvertSeeds ift)
+
+add_executable(iftGFLIMDataSetActiv iftGFLIMDataSetActiv.c)
+target_link_libraries(iftGFLIMDataSetActiv ift)
 
 add_executable(iftGFLIMDecodeLayer iftGFLIMDecodeLayer.c)
 target_link_libraries(iftGFLIMDecodeLayer ift)
@@ -10,11 +19,16 @@ target_link_libraries(iftGFLIMDecodeLayer ift)
 add_executable(iftGFLIMExtract iftGFLIMExtract.c)
 target_link_libraries(iftGFLIMExtract ift)
 
+add_executable(iftGFLIMExtract2 iftGFLIMExtract2.c)
+target_link_libraries(iftGFLIMExtract2 ift)
+
 add_executable(iftGFLIMWriteActivations iftGFLIMWriteActivations.c)
 target_link_libraries(iftGFLIMWriteActivations ift)
 
+add_executable(iftGraphToMimg iftGraphToMimg.c)
+target_link_libraries(iftGraphToMimg ift)
+
 add_subdirectory(GFLIM)
 add_subdirectory(GFLIM-BoFP)
-add_subdirectory(GFLIM-BoFP-U)
 add_subdirectory(M-GFLIM-BoFP)
 add_subdirectory(GFLIM_BoFP_precompGraph)

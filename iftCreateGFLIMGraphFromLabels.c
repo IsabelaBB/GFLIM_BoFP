@@ -1,8 +1,9 @@
 /**
- * \file iftCreateGFLIMGraph.c
+ * \file iftCreateGFLIMGraphFromLabels.c
  * \brief Create graphs from superpixel images
  * \details Given a directory with original images and a directory with superpixel images,
- *         create graphs using the superpixels and save them in a specified graphs directory.
+ *         create graphs using the superpixels regions and save them in a specified graphs directory.
+ * \author Isabela Borlido
  */
 
 #include "iftCommon.h"
@@ -11,10 +12,10 @@
 void usage()
 {
     printf(" Usage: \n");
-    printf("iftCreateGFLIMGraph <P1> <P2> <P3> <P4> <P5>\n");
+    printf("iftCreateGFLIMGraphFromLabels P1 P2 P3 P4 P5\n");
     printf("P1: original images directory \n");
     printf("P2: superpixel images diretory \n");
-    printf("P3: Graph feature (MEAN, SUM, SUM_MULT_RELSIZE, SUM_CONCAT_RELSIZE). See iftGFLIMGraphNodeFeature at iftGFLIMGraph.h for details \n");
+    printf("P3: Graph feature. See iftGFLIMGraphNodeFeature at iftGFLIMGraph.h for details \n");
     printf("P4: graphs diretory \n");
     printf("P5: Using mask (bool) \n");
 }

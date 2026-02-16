@@ -2,63 +2,9 @@
 
 /**
  * \file iftGFLIMWriteActivations.c
- * \brief Write the activations of a GFLIM or a GFLIM-BoFP layer
+ * \brief Write the image activations from a layer of a model trained with GFLIM or GFLIM-BoFP
+ * \author Isabela Borlido
  */
-
-/*iftDataSet **ReadPCAMatrixAndClasses(char *model_dir, int *nclasses)
-{
-    int nclasses_dataset = 0;
-    char filename[512];
-
-    sprintf(filename, "%s/model/PCAMatrix_%d.zip", model_dir, nclasses_dataset);
-    while(iftFileExists(filename))
-    {
-        nclasses_dataset++;
-        sprintf(filename, "%s/model/PCAMatrix_%d.zip", model_dir, nclasses_dataset);
-    }
-
-    if(nclasses_dataset == 0)
-        iftError("No PCA matrix found in %s", "main", model_dir);
-
-    iftDataSet **pcaMatrix = (iftDataSet **)iftAlloc(nclasses_dataset, sizeof(iftDataSet *));
-    for(int c = 0; c < nclasses_dataset; c++)
-    {
-        sprintf(filename, "%s/model/PCAMatrix_%d.zip", model_dir, c);
-        pcaMatrix[c] = iftCreateDataSet(0, 1);
-        pcaMatrix[c]->fsp = iftReadPCAMatrix(filename);
-        pcaMatrix[c]->nfeats = pcaMatrix[c]->fsp.nfeats;
-    }
-    (*nclasses) = nclasses_dataset;
-    return pcaMatrix;
-}
-*/
-
-/*float *iftGFLIMLoadBiasPCA(char *basepath, int *nkernels)
-{
-#ifdef IFT_DEBUG
-  printf("%s \n", __func__);
-  printf("\t basepath: %s\n", basepath == NULL ? "NULL" : basepath);
-#endif
-
-    char filename[512];
-    FILE *fp;
-    float *bias;
-
-    sprintf(filename, "%s-bias.txt", basepath);
-    fp = fopen(filename, "r");
-    if(fp == NULL) iftError("Error opening file %s", filename);
-    if(fscanf(fp, "%d", nkernels) != 1)
-      iftError("Error reading number of kernels from file %s", filename);
-    bias = iftAllocFloatArray(*nkernels);
-    for (int k = 0; k < *nkernels; k++)
-    {
-      if(fscanf(fp, "%f ", &bias[k]) != 1)
-        iftError("Error reading bias values from file %s", filename);
-    }
-    fclose(fp);
-    return bias;
-}
-*/
 
 void validateArgs(char *model_dir, int layer, char *input_dir, char *labels_dir, char *input_net_labels)
 {
@@ -177,12 +123,12 @@ int main(int argc, char *argv[])
 {
     if (argc != 4 && argc != 5 && argc != 6)
     {
-        iftError("Usage: iftGFLIMWriteActivations <P1> <P2> <P3> [<P4> <P5>]\n"
-                 "[1] model directory \n"
-                 "[2] layer number (1, 2,..) \n"
-                 "[3] batch size \n"
-                 "[4] skip connection (0: no skip, > 1: largest scale of skip) \n"
-                 "[5] arch to be used when skip connection is concat (optional)"
+        iftError("Usage: iftGFLIMWriteActivations P1 P2 P3 [P4 P5]\n"
+                 "P1 : model directory \n"
+                 "P2 : layer number (1, 2,..) \n"
+                 "P3 : batch size \n"
+                 "P4 : skip connection (0: no skip, > 1: largest scale of skip) \n"
+                 "P5 : arch to be used when there is skip connection (optional)"
                  , "main");
     }
 

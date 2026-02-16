@@ -1,93 +1,12 @@
 #include "ift.h"
 
 /**
- * \file iftGFLIMExtract.c
- * \brief Use a GFLIM or a GFLIM-BoFP trained model to extract features from a set of images and decode them.
- * \note This version supports neighbors based on color or activations similarity.
- * \note This version does NOT support residual connections and image stride.
+ * \file iftGFLIMExtractV3.c
+ * \brief Use a model trained with GFLIM or GFLIM-BoFP to extract features from a set of images and decode them.
+ * \note Used when kernel_neighbors, pool_neighbors, and stride_neighbors are either "act" or "color" (i.e., computed using activation or color information).
+ * \note This version does NOT support residual connections and stride IFT_GFLIM_IMAGESTRIDE.
+ * \author Isabela Borlido
  */
-
-// usado quando kernel_neighbors == "color" ou pool_neighbors == "color" ou stride_neighbors == "color"
-
-int *SplitIntList(char *str, int *nvalues)
-{
-    *nvalues = 100;
-    int *values = (int *)iftAlloc(*nvalues, sizeof(int));
-    char *token = strtok(str, ",");
-    int i = 0;
-    while (token != NULL && i < *nvalues)
-    {
-        if(i == *nvalues)
-        {
-            *nvalues += 100;
-            values = (int *)iftRealloc(values, *nvalues * sizeof(int));
-        }
-        values[i++] = atoi(token);
-        token = strtok(NULL, ",");
-    }
-    if(i != *nvalues)
-        values = (int *)iftRealloc(values, i * sizeof(int));
-    *nvalues = i;
-    return values;
-}
-
-iftGFLIMDecoderType *SplitDecoderList(char *str, int *nvalues)
-{
-    *nvalues = 100;
-    iftGFLIMDecoderType *values = (iftGFLIMDecoderType *)iftAlloc(*nvalues, sizeof(iftGFLIMDecoderType));
-    char *token = strtok(str, ",");
-    int i = 0;
-    while (token != NULL && i < *nvalues)
-    {
-        if(i == *nvalues)
-        {
-            *nvalues += 100;
-            values = (iftGFLIMDecoderType *)iftRealloc(values, *nvalues * sizeof(iftGFLIMDecoderType));
-        }
-        values[i++] = iftGLFLIMGetDecoderType(token);
-        token = strtok(NULL, ",");
-    }
-    if(i != *nvalues)
-        values = (iftGFLIMDecoderType *)iftRealloc(values, i * sizeof(iftGFLIMDecoderType));
-    *nvalues = i;
-    return values;
-}
-
-char *iftGFLIMDecoderToString(iftGFLIMDecoderType decoder)
-{
-    char *decoder_name = iftAllocCharArray(20);
-    switch (decoder)
-    {
-    case IFT_GFLIM_TRISTATE_DECODER:
-        sprintf(decoder_name, "tristate");
-        break;
-
-    case IFT_GFLIM_HYBRID_DECODER:
-        sprintf(decoder_name, "hybrid");
-        break;
-
-    case IFT_GFLIM_GRAPHADAPTIVE_DECODER:
-        sprintf(decoder_name, "graph-adaptive");
-        break;
-
-    case IFT_GFLIM_GAUSSIAN_DECODER:
-        sprintf(decoder_name, "gaussian");
-        break;
-
-    case IFT_GFLIM_TEST_DECODER:
-        sprintf(decoder_name, "test");
-        break;
-
-    case IFT_GFLIM_MEAN_DECODER:
-        sprintf(decoder_name, "mean");
-        break;
-
-    default:
-        iftError("Invalid decoder type: %d", __func__, decoder);
-        return NULL;
-    }
-    return decoder_name;
-}
 
 void ProcessBatch(iftFileSet *fs, int first, int last, 
     char *model_dir, iftGFLIMArch *arch, int nLayers, 
@@ -96,8 +15,8 @@ void ProcessBatch(iftFileSet *fs, int first, int last,
     iftGFLIMGraphSpxMethod spx_method,
     iftGFLIMGraphAttention attention_opt, 
     iftGFLIMAggregation aggregation_opt, 
-    bool save_intermediate, 
-    bool *layers_saveActivations, bool *layers_decode,
+    bool *layers_saveGraphAct, bool *layers_saveImgAct, 
+    bool *layers_decode,
     iftGFLIMDecoderType *decoders, int nDecoders,
     char *kernel_neighbors,
     char *pool_neighbors,
@@ -174,7 +93,6 @@ void ProcessBatch(iftFileSet *fs, int first, int last,
         char filename[1024];
         int nkernels = 0;
         int nlabels = 1;
-        bool use_layer_skip = false;
 
         // load kernel weights and biases
         sprintf(filename, "%s/model/conv%d-bias.txt", model_dir, l + 1);
@@ -210,7 +128,7 @@ void ProcessBatch(iftFileSet *fs, int first, int last,
 
         /* Load labels indicating class (label) per channel */
         if ((attention_opt != IFT_FLIMGRAPH_ATTENTION_NONE && bias_merged != NULL) ||
-            layers_decode[l] || layers_saveActivations[l])
+            layers_decode[l] || layers_saveImgAct[l])
         {
             sprintf(filename, "%s/model/conv%d-labels.txt", model_dir, l + 1);
             if (!iftFileExists(filename))
@@ -352,7 +270,7 @@ void ProcessBatch(iftFileSet *fs, int first, int last,
         }
 
         // save intermediate graphs and labels
-        if (save_intermediate || use_layer_skip)
+        if (layers_saveGraphAct[l])
         {
             char dir[1024];
             sprintf(dir, "%s/layer%d", model_dir, l + 1);
@@ -375,7 +293,7 @@ void ProcessBatch(iftFileSet *fs, int first, int last,
         }
 
         // save activations
-        if(layers_saveActivations[l])
+        if(layers_saveImgAct[l])
         {
             if(true_labels == NULL)
             {
@@ -438,34 +356,7 @@ void ProcessBatch(iftFileSet *fs, int first, int last,
                 sprintf(filename, "%s/model/conv%d-labels.txt", model_dir, l + 1);
                 if (!iftFileExists(filename))
                     iftError("File %s does not exist", __func__, filename);
-
-                if(strcmp(arch->layer[l].skip_type, "concat") != 0 || l == 0 ||
-                   strcmp(arch->layer[l].skip_type, "concat_att") != 0)
-                    true_labels = iftGFLIMLoadKernelLabels(filename, &nkernels);
-                else{
-                    iftIntArray *layers_to_concat = iftCreateIntArray(arch->nlayers);
-                    layers_to_concat->val[0] = l+1; // add current layer
-                    int nconcat_layers = getLayersToConcat(arch, l+1, l, layers_to_concat, 1);
-                    nkernels = 0;
-                    for(int i = 0; i < nconcat_layers; i++)
-                    {
-                        sprintf(filename, "%s/model/conv%d-labels.txt", model_dir, layers_to_concat->val[i]);
-                        if(!iftFileExists(filename))
-                            iftError("File %s does not exist", "main", filename);
-                            
-                        /* load merged model */
-                        int nkernels_i = 0;
-                        int *truelabels_i = iftGFLIMLoadKernelLabels(filename, &nkernels_i);
-                        
-                        nkernels += nkernels_i;
-                        true_labels = realloc(true_labels, nkernels * sizeof(int));
-                        for(int j = 0; j < nkernels_i; j++){
-                            true_labels[nkernels - nkernels_i + j] = truelabels_i[j];
-                        }
-                        iftFree(truelabels_i);
-                    }
-                    iftDestroyIntArray(&layers_to_concat);
-                }
+                true_labels = iftGFLIMLoadKernelLabels(filename, &nkernels);
             }
             nlabels = iftGFLIMNumberOfTruelabels(true_labels, nkernels);
 
@@ -512,16 +403,14 @@ void ProcessBatch(iftFileSet *fs, int first, int last,
     iftFree(neighbors);
 
     // delete folders
-    if(!save_intermediate)
+    for (int l = 1; l <= nLayers; l++)
     {
-        for (int l = 1; l <= nLayers; l++)
-        {
-            char dir[1024];
-            sprintf(dir, "%s/layer%d", model_dir, l);
-            iftRemoveDir(dir);
-            sprintf(dir, "%s/labels%d", model_dir, l);
-            iftRemoveDir(dir);
-        }
+        if(layers_saveGraphAct[l-1]) continue;
+        char dir[1024];
+        sprintf(dir, "%s/layer%d", model_dir, l);
+        iftRemoveDir(dir);
+        sprintf(dir, "%s/labels%d", model_dir, l);
+        iftRemoveDir(dir);
     }
 
     for (int k = 0; k < ngraphs_batch; k++)
@@ -540,38 +429,36 @@ int main(int argc, char *argv[])
 
     if (argc != 19 && argc != 20 && argc != 21)
     {
-        iftError("Usage: iftGFLIMExtract <P1> <P2> <P3> <P4> <P5> "
-                                        "<P6> <P7> <P8> <P9> <P10> "
-                                        "<P11> <P12> <P13> <P14> <P15> "
-                                        "<P16> <P17> <P18> <P19> [<P20>] \n"
+        iftError("Usage: iftGFLIMExtractV3 P1 P2 P3 P4 P5 "
+                                        "P6 P7 P8 P9 P10 "
+                                        "P11 P12 P13 P14 P15 "
+                                        "P16 P17 P18 P19 [P20] \n"
                 // parameters related to input data
-                "[ 1] Images directory \n"
-                "[ 2] Model directory \n"
+                "P1 : Images directory \n"
+                "P2 : Model directory \n"
                 // parameters related to the network
-                "[ 3] Architecture file \n"
-                "[ 4] Number of layers \n"
-                "[ 5] Batch size (> 0) \n"
-                "[ 6] attention (NONE, NODE_SIZE, NEIGHB_SIMIL, NEIGHB_SIZE) \n"
-                "[ 7] aggregation (CONCAT, MEAN, WMEAN) \n"
+                "P3 : Architecture file \n"
+                "P4 : Number of layers \n"
+                "P5 : Batch size (> 0) \n"
+                "P6 : attention. See iftGFLIMGraphAttention at iftGFLIMGraph.h for more details \n"
+                "P7 : aggregation. See iftGFLIMAggregation at iftGFLIMGraph.h for more details \n"
                 // parameters related to the graph
-                "[ 8] Graph feature " 
-                                    "{MEAN, SUM, SUM_MULT_RELSIZE, SUM_CONCAT_RELSIZE} "
-                                    "(see iftGFLIMGraph.h for more information) \n"
-                "[ 9] superpixel method {1:DISF, 2:ERGC} \n"
-                "[10] Number of superpixels \n"
-                "[11] Fixed number of superpixels (boolean) \n"
+                "P8 : Graph feature. See iftGFLIMGraph.h for more information \n"
+                "P9 : superpixel method. See iftGFLIMGraph.h for more information \n"
+                "P10: Number of superpixels \n"
+                "P11: Fixed number of superpixels (boolean) \n"
                 // parameters related to output data
-                "[12] Save graphs and labels after each layer (1/0) \n"
-                "[13] Layers to save activations (1,2,..) \n"
-                "[14] Layers to decode (1,2,..) \n"
-                "[15] Decoders (tristate, hybrid, graph-adaptive, gaussian) \n"
+                "P12: Layers to save outputs graphs and superpixel maps (1,2,..) \n"
+                "P13  Layers to image save activations (1,2,..) \n"
+                "P14: Layers to decode (1,2,..) \n"
+                "P15: Decoders. See iftGFLIMDecoderType at iftGFLIM_BoFP.h for more details \n"
                 // parameters related to kernels, pooling and stride neighbors
-                "[16] Kernel neighbors (act, color) \n"
-                "[17] Pool neighbors (act, color) \n"
-                "[18] Stride neighbors (act, color) \n"
+                "P16: Kernel neighbors (act, color) \n"
+                "P17: Pool neighbors (act, color) \n"
+                "P18: Stride neighbors (act, color) \n"
                 // optional parameters
-                "[19] Initial seeds (only used when superpixel method is DISF) \n" 
-                "[20] Use mask (optional, bool). Compute the graph using only pixels inside the mask \n",
+                "P19: Initial seeds (only used when superpixel method is DISF) \n" 
+                "P20: Use mask (optional, bool). Compute the graph using only pixels inside the mask \n",
                 "argc: %d", "main", argc);
     }
     tstart = iftTic();
@@ -595,9 +482,10 @@ int main(int argc, char *argv[])
     bool fixed_num_spx = atoi(argv[11]);
     
     // parameters related to output data
-    bool save_intermediate = atoi(argv[12]); // save graphs and labels after each layer
     int nLayers_saveAct = 0;
-    int *list_int_act = SplitIntList(argv[13], &nLayers_saveAct); // layers to save activations
+    int *list_graph_int_act = SplitIntList(argv[12], &nLayers_saveAct); // layers to save graph activations
+    int nLayers_saveImgAct = 0;
+    int *list_img_int_act = SplitIntList(argv[13], &nLayers_saveImgAct); // layers to save image activations
     int nLayers_decode = 0;
     int *list_int_decode = SplitIntList(argv[14], &nLayers_decode); // layers to decode
     int nDecoders = 0;
@@ -613,12 +501,19 @@ int main(int argc, char *argv[])
     bool use_mask = (argc == 21) ? atoi(argv[20]) : false;
 
     // read which layers to save activations and decode
-    bool *layers_saveAct = (bool *)iftAlloc(nLayers, sizeof(bool));
+    bool *layers_saveGraphAct = (bool *)iftAlloc(nLayers, sizeof(bool));
     for(int i = 0; i < nLayers_saveAct; i++){
-        if(list_int_act[i] > 0)
-            layers_saveAct[list_int_act[i]-1] = true;
+        if(list_graph_int_act[i] > 0)
+            layers_saveGraphAct[list_graph_int_act[i]-1] = true;
     }
-    iftFree(list_int_act);
+    iftFree(list_graph_int_act);
+
+    bool *layers_saveImgAct = (bool *)iftAlloc(nLayers, sizeof(bool));
+    for(int i = 0; i < nLayers_saveImgAct; i++){
+        if(list_img_int_act[i] > 0)
+            layers_saveImgAct[list_img_int_act[i]-1] = true;
+    }
+    iftFree(list_img_int_act);
 
     bool *layers_decode = (bool *)iftAlloc(nLayers, sizeof(bool));
     for(int i = 0; i < nLayers_decode; i++){
@@ -694,7 +589,7 @@ int main(int argc, char *argv[])
             initial_seeds, nsuperpixels, 
             fixed_num_spx, graph_feat, spx_method,
             attention_opt, aggregation_opt, 
-            save_intermediate, layers_saveAct, layers_decode,
+            layers_saveGraphAct, layers_saveImgAct, layers_decode,
             decoders, nDecoders, 
             kernel_neighbors,
             pool_neighbors,
@@ -713,7 +608,7 @@ int main(int argc, char *argv[])
             initial_seeds, nsuperpixels,
             fixed_num_spx, graph_feat, spx_method,
             attention_opt, aggregation_opt, 
-            save_intermediate, layers_saveAct, layers_decode,
+            layers_saveGraphAct, layers_saveImgAct, layers_decode,
             decoders, nDecoders, 
             kernel_neighbors,
             pool_neighbors,
@@ -721,18 +616,15 @@ int main(int argc, char *argv[])
             use_mask);
     }
 
-    if(!save_intermediate)
-    {
-        char dir[1024];
-        sprintf(dir, "%s/layer0", model_dir);
-        iftRemoveDir(dir);
-        sprintf(dir, "%s/labels0", model_dir);
-        iftRemoveDir(dir);
-    }
-
+    sprintf(dir, "%s/layer0", model_dir);
+    iftRemoveDir(dir);
+    sprintf(dir, "%s/labels0", model_dir);
+    iftRemoveDir(dir);
+    
     iftDestroyFileSet(&fs);
     iftDestroyGFLIMArch(&arch);
-    iftFree(layers_saveAct);
+    iftFree(layers_saveGraphAct);
+    iftFree(layers_saveImgAct);
     iftFree(layers_decode);
     iftFree(decoders);
 

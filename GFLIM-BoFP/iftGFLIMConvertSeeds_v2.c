@@ -1,7 +1,8 @@
 /**
- * \file iftReduceSeedSet_v2.c
+ * \file iftGFLIMConvertSeeds_v2.c
  * \brief Convert image-based markers to graph-based markers, performs a k-means per graph marker, and another k-means per label. 
- * \warning The markers coordinates must be in "*-seeds.txt" files.
+ * \warning The markers coordinates must be in "imagename-seeds.txt" files.
+ * \author Isabela Borlido
  */
 
 #include "ift.h"
@@ -12,7 +13,6 @@
  * \param S The labeled set with the seeds.
  * \param kernel_size The size of the kernel (number of neighbors) used to extract the features.
  * \param nclusters_per_marker The number of clusters per marker.
- * \param attention_opt The attention option to be used. @see iftGFLIMGraphAttention for more details.
  * \param aggregation_opt The aggregation strategy to be used. @see iftGFLIMAggregation for more details.
  * \return The dataset with the seeds.
  */
@@ -20,7 +20,6 @@ iftDataSet *iftGFLIMSelectClusterCenters_perGraph(iftGFLIMGraph *graph,
                                             iftLabeledSet *S,
                                             int kernel_size,
                                             int nclusters_per_marker,
-                                            iftGFLIMGraphAttention attention_opt,
                                             iftGFLIMAggregation aggregation_opt)
 {
 #ifdef IFT_DEBUG
@@ -34,8 +33,7 @@ iftDataSet *iftGFLIMSelectClusterCenters_perGraph(iftGFLIMGraph *graph,
   else
     printf("\t S size: %d \n", iftLabeledSetSize(S));
   printf("\t kernel_size: %d\n", kernel_size);
-  printf("\t nclusters_per_marker: %d\n", nclusters_per_bkg_marker);
-  printf("\t attention_opt: %d\n", attention_opt);
+  printf("\t nclusters_per_marker: %d\n", nclusters_per_marker);
   printf("\t aggregation_opt: %d\n", aggregation_opt);
 #endif
 
@@ -44,7 +42,7 @@ iftDataSet *iftGFLIMSelectClusterCenters_perGraph(iftGFLIMGraph *graph,
   iftGFLIMRelabelConnectedComponentsInPlace(graph, S, obj_label_map); 
 
   // extract neighbor information and compute the iftDataSet
-  iftDataSet *Z = iftGFLIMExtractMarkerDataSet(graph, S, kernel_size, attention_opt, aggregation_opt);
+  iftDataSet *Z = iftGFLIMExtractMarkerDataSet(graph, S, kernel_size, aggregation_opt);
   iftDataSet *Z_out = iftCreateDataSet(iftMin(Z->nsamples, Z->nclasses*nclusters_per_marker), Z->nfeats); // assumes that the number of kernels is the same for foreground and background
 
   int k = 0; // index for the output dataset
@@ -155,10 +153,7 @@ iftLabeledSet **iftGFLIMSelectClusterCenters_allGraphs(iftDataSet **Z,
       {
         int graph_id = Z1->sample[s].truelabel;
         int p = seeds_map[Z1->sample[s].id];
-        iftInsertLabeledSetMarkerAndHandicap(&T[graph_id], p,
-                                                     c,
-                                                     c,
-                                                     0);
+        iftInsertLabeledSetMarkerAndHandicap(&T[graph_id], p, c, c, 0);
       }
     }
     iftDestroyDataSet(&Z1);
@@ -169,15 +164,14 @@ iftLabeledSet **iftGFLIMSelectClusterCenters_allGraphs(iftDataSet **Z,
 int main(int argc, char *argv[]) {
     timer *tstart;
     
-    if (argc != 8)
-      iftError("Usage: iftReduceSeedSet <P1> <P2> <P3> <P4> <P5> <P6> <P7> \n"
+    if (argc != 7)
+      iftError("Usage: iftReduceSeedSet <P1> <P2> <P3> <P4> <P5> <P6> \n"
 	       "P1: model folder\n"
 	       "P2: image markers folder \n"
          "P3: number of feature points per marker \n"
          "P4: kernel size \n"
          "P5: number of feature points per label \n"
-         "P6: attention option (NONE, NODE_SIZE, NEIGHB_SIMIL, NEIGHB_SIZE) \n"
-         "P7: aggregation strategy (CONCAT, MEAN, WMEAN) \n",
+         "P6: aggregation strategy (CONCAT, MEAN, WMEAN) \n",
 	       "main");
 
     tstart = iftTic();
@@ -187,8 +181,7 @@ int main(int argc, char *argv[]) {
     int nfpts_per_marker = atoi(argv[3]); 
     int kernel_size = atoi(argv[4]);
     int nfpts_per_label = atoi(argv[5]);
-    iftGFLIMGraphAttention attention_opt = iftGLIMGraphGetAttention(argv[6]);
-    iftGFLIMAggregation aggregation_opt = iftGFLIMGraphGetAggregation(argv[7]);
+    iftGFLIMAggregation aggregation_opt = iftGFLIMGraphGetAggregation(argv[6]);
     
     if(!iftDirExists(model_dir))
       iftError("Model directory does not exist: %s", "main", model_dir);
@@ -240,7 +233,7 @@ int main(int argc, char *argv[]) {
         iftDestroyLabeledSet(&S);
 
         // reduce the seed set with a k-means per marker
-        Z[i] = iftGFLIMSelectClusterCenters_perGraph(graph, graph_seeds, kernel_size, nfpts_per_marker, attention_opt, aggregation_opt);
+        Z[i] = iftGFLIMSelectClusterCenters_perGraph(graph, graph_seeds, kernel_size, nfpts_per_marker, aggregation_opt);
         iftDestroyLabeledSet(&graph_seeds);
         
         iftFree(basename);

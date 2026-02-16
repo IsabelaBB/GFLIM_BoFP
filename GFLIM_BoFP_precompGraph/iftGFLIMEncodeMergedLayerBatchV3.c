@@ -1,12 +1,12 @@
 #include "ift.h"
 
 /**
- * \file iftGFLIMGSEncodeMergedLayerBatchV3.c
- * \brief Encode the layer using the merged kernels, bias, and labels
+ * \file iftGFLIMEncodeMergedLayerBatchV3.c
+ * \brief Encode the layer using the merged kernels, bias, and labels from iftGFLIMMergeLayerModels
  * \note It does not decode the layer
+ * \note Used when kernel_neighbors, pool_neighbors, and stride_neighbors are "color" (i.e., computed using color information). 
+ * \author Isabela Borlido
  */
-
-// usado quando kernel_neighbors == "color" ou pool_neighbors == "color" ou stride_neighbors == "color"
 
 void processBatch(iftFileSet *fs,
                   int first, int last,
@@ -73,7 +73,6 @@ void processBatch(iftFileSet *fs,
     {
         if (layer.pool_stride > 1)
         {
-            printf("Stride based on precomputed graphs ... ");
             for (int k = 0; k <= last - first; k++)
             {
                 // read the precomputed graph
@@ -149,18 +148,18 @@ int main(int argc, char *argv[])
     timer *tstart;
 
     if (argc != 12)
-        iftError("Usage: iftGFLIMGSEncodeMergedLayerBatch <P1> <P2> <P3> <P4> <P5> <P6> <P7> <P8> <P9> <P10> <P11> \n"
-                 "[1] model directory \n"
-                 "[2] architecture of the network (.json) \n"
-                 "[3] layer number (1, 2, 3) \n"
-                 "[4] batch size (1, 8, 16, 32, etc) \n"
-                 "[5] attention (NONE, NODE_SIZE, NEIGHB_SIMIL, NEIGHB_SIZE) \n"
-                 "[6] kernel neighbors (act, color) \n"
-                 "[7] pool neighbors (act, color) \n"
-                 "[8] stride neighbors (act, color) \n"
-                 "[9] graph feature (MEAN, SUM) \n"
-                 "[10] aggregation strategy \n"
-                 "[11] original images path \n",
+        iftError("Usage: iftGFLIMEncodeMergedLayerBatchV3 P1 P2 P3 P4 P5 P6 P7 P8 P9 P10 P11 \n"
+                 "P1 : model directory \n"
+                 "P2 : architecture of the network (.json) \n"
+                 "P3 : layer number (1, 2, 3) \n"
+                 "P4 : batch size (1, 8, 16, 32, etc) \n"
+                 "P5 : attention. See iftGFLIMGraphAttention at iftGFLIMGraph.h for details \n"
+                 "P6 : kernel neighbors (act, color) \n"
+                 "P7 : pool neighbors (act, color) \n"
+                 "P8 : stride neighbors (act, color) \n"
+                 "P9 : graph feature. See iftGFLIMGraphNodeFeature at iftGFLIMGraph.h for details \n"
+                 "P10: aggregation strategy. See iftGFLIMAggregation at iftGFLIMGraph.h for details \n"
+                 "P11: original images path \n",
                  "main");
 
     tstart = iftTic();

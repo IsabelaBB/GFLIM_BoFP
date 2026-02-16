@@ -1,30 +1,29 @@
 #include "ift.h"
 
 /**
- * \file iftGFLIMGSEncodeMergedLayer.c
- * \brief Encode a layer using the non-merged kernels, bias, and labels created by iftGFLIMCreateLayerModel
+ * \file iftGFLIMEncodeLayerV3.c
+ * \brief Encode a layer using the non-merged kernels, bias, and labels created by iftGFLIMPrecCreateLayerModel or iftGFLIMCreateLayerModel
  * \warning This function only encode feature from the training graphs.
+ * \note Used when kernel_neighbors, pool_neighbors, and stride_neighbors are either "act" or "color" (i.e., computed using either activation or color information).
+ * \author Isabela Borlido
  */
-
-// usado quando kernel_neighbors == "color" ou pool_neighbors == "color" ou stride_neighbors == "color" 
-// mas funciona para todos "act" também 
 
 int main(int argc, char *argv[])
 {
     timer *tstart;
 
     if (argc != 11)
-        iftError("Usage: iftGFLIMGSEncodeLayer <P1> <P2> <P3> <P4> <P5> <P6> <P7> <P8> <P9> <P10> \n"
-                 "[ 1] model directory \n"
-                 "[ 2] architecture of the network (.json) \n"
-                 "[ 3] layer number (1, 2, 3) \n"
-                 "[ 4] attention (NONE, NODE_SIZE, NEIGHB_SIMIL, NEIGHB_SIZE) \n"
-                 "[ 5] kernel neighbors (color, act) \n"
-                 "[ 6] pool neighbors (color, act) \n"
-                 "[ 7] stride neighbors (color, act) \n"
-                 "[ 8] graph feature (MEAN, SUM) \n"
-                 "[ 9] aggregation strategy \n"
-                 "[10] original images path \n",
+        iftError("Usage: iftGFLIMEncodeLayerV3 P1 P2 P3 P4 P5 P6 P7 P8 P9 P10 \n"
+                 "P1 : model directory \n"
+                 "P2 : architecture of the network (.json) \n"
+                 "P3 : layer number (1, 2, 3) \n"
+                 "P4 : attention. See iftGFLIMGraphAttention at iftGFLIMGraph.h for details \n"
+                 "P5 : kernel neighbors (color, act) \n"
+                 "P6 : pool neighbors (color, act) \n"
+                 "P7 : stride neighbors (color, act) \n"
+                 "P8 : graph feature. See iftGFLIMGraphNodeFeature at iftGFLIMGraph.h for details \n"
+                 "P9 : aggregation strategy. See iftGFLIMAggregation at iftGFLIMGraph.h for details \n"
+                 "P10: original images path \n",
                  "main");
 
     tstart = iftTic();

@@ -1,8 +1,8 @@
 /**
  * \file iftCreateGFLIMGraph.c
  * \brief Create graphs from images
- * \details Given a directory with images, create graphs using superpixels
- *          and save them in a specified model directory.
+ * \details Given a directory with images, create graphs from a superpixel segmentation
+ *          and save them (graphs and superpixel images) in a specified model directory.
  * \author Isabela Borlido
  */
 
@@ -13,12 +13,12 @@
 void usage()
 {
     printf(" Usage: \n");
-    printf("iftCreateGFLIMGraph <P1> <P2> <P3> <P4> <P5> [<P6> <P7>] \n");
+    printf("iftCreateGFLIMGraph P1 P2 P3 P4 P5 [P6 P7] \n");
     printf("P1: images diretory \n");
     printf("P2: number of superpixels \n");
     printf("P3: model folder \n");
-    printf("P4: Graph feature (MEAN, SUM, SUM_MULT_RELSIZE, SUM_CONCAT_RELSIZE). See iftGFLIMGraphNodeFeature at iftGFLIMGraph.h for details \n");
-    printf("P5: superpixel method (DISF, ERGC). See iftGFLIMGraphSpxMethod at iftGFLIMGraph.h for details \n");
+    printf("P4: Graph feature. See iftGFLIMGraphNodeFeature at iftGFLIMGraph.h for details \n");
+    printf("P5: superpixel method. See iftGFLIMGraphSpxMethod at iftGFLIMGraph.h for details \n");
     printf("P6: number of initial seeds (only used when P5=DISF) \n");
     printf("P7: bool use mask (optional) --- used only if P5=DISF \n");
 }
@@ -116,22 +116,11 @@ int main(int argc, char *argv[])
         if(initial_seeds < 1)
             initial_seeds_img = (int)(npixels * initial_seeds);
 
-        //printf("Train img: %s, spx: %d, seeds: %d\n", basename, final_spx_img, initial_seeds_img);
         iftImage *label_img = NULL;
         iftGFLIMGraph *graph = iftImageToGFLIMGraph(img, final_spx_img, initial_seeds_img, 
                                                     &label_img, graph_feat, spx_method,
                                                     mask);
         
-        /*if(strcmp(basename, "000002_00000014") == 0)
-        {
-            printf("Image %s, num nodes: %d, num edges: %d, num feats: %d\n", 
-                basename, graph->num_nodes, graph->num_edges, graph->num_feats);
-            printf("Node 0: ");
-            for(int f = 0; f < graph->num_feats; f++)
-                printf("%f ", graph->nodes[0].feats[f]);
-            printf("\n");
-        }*/
-
         if(use_mask) iftDestroyImage(&mask);
         
         sprintf(filename, "%s/%s.pgm", labels_dir, basename);

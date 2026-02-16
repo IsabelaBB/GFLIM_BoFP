@@ -1,29 +1,11 @@
 /**
  * \file iftGFLIMDataSetActiv.c
- * \brief Create GFLIM graph dataset from feature dataset and superpixel images.
+ * \brief Convert an iftDataset (.zip file) to activation images.
+ * \note The original images folder and the superpixel images folder used in the iftDataset creation are required.
  * \author Isabela Borlido
  */
 
 #include "ift.h"
-
-void iftCreateImgRefData(char *origImgsDir, char *imgBasename, char *origImgExt, iftFileSet *fsRefData, int fileId)
-{
-  char filename[2048];
-  sprintf(filename, "%s/%s%s", origImgsDir, imgBasename, origImgExt);
-  fsRefData->files[fileId] = iftCreateFile(filename);
-}
-
-void iftWriteKernelDataSetWithFileSet(iftDataSet *Z, iftFileSet *fs, iftSampleStatus status, char *outBasename)
-{
-  iftSetRefData(Z, fs, IFT_REF_DATA_FILESET);
-  iftSetStatus(Z, status);
-  if (Z->nclasses > 0)
-    iftAddStatus(Z, IFT_SUPERVISED);
-  char filename[2048];
-  sprintf(filename, "%s.zip", outBasename);
-  iftWriteDataSet(Z, filename);
-  printf("File '%s' created\n", filename);
-}
 
 iftGFLIMGraph *iftComputeGFLIMGraphFromMatrix(
                     double **matrix,
@@ -86,10 +68,10 @@ int main(int argc, char *argv[])
   timer *tstart = NULL;
 
   if (argc != 4)
-    iftError("Usage: iftActivDataSet <...>\n"
-             "[1] input dataset\n"
-             "[2] superpixel images directory\n"
-             "[3] output_dir: Directory to save the output dataset\n",
+    iftError("Usage: iftActivDataSet P1 P2 P3\n"
+             "P1 : input dataset\n"
+             "P2 : superpixel images directory\n"
+             "P3 : output_dir: Directory to save the output dataset\n",
              "main");
 
   tstart = iftTic();

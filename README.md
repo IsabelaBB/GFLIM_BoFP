@@ -7,52 +7,117 @@ This repository contain the programs for GFLIM and GFLIM-BoFP
 
 ## Compile
 
-Before compiling, set `NEWIFT_DIR` to the path to LibIFT
+Compile LibIFT project
 
 ```shell
-export NEWIFT_DIR="~/Codes/LibIFT"; 
+cd build; cmake ..; make; cp libift.a ../lib/; make install;
 ```
 
-Then, compile GFLIM programs
+Alternatively, you can compile only the programs at demo/GFLIM or demo/Classification:
 
-```bash
-bash compile.sh 0
-```
+1. Set `NEWIFT_DIR` to the path to LibIFT: `export NEWIFT_DIR="<pathToLibIFTdir>";`
 
-The executable files will be created at LibIFT/bin
+2. Compile GFLIM programs: `cd demo/GFLIM/; bash compile.sh 0;`
+
+In both cases, executable files will be created at LibIFT/bin
 
 ## Programs
 
+There are three version of GFLIM:
+
+- GFLIM
+- GFLIM Bag of Feature Points (GFLIM BoFP)
+- Recurrent GFLIM BoFP (RGFLIM BoFP)
+- Multiscale GFLIM BoFP (MGFLIM BoFP)
+
+In GFLIM BoFP, you can either extract neighborhood information based on activation or color similarity. This option can be used setting to the variables `kernel_neighbors`, `pool_neighbors`, and/or `kernel_neighbors` the value `color` instead of the standard `act`. The programs that handle this option are at [GFLIM_BoFP_precompGraph](GFLIM_BoFP_precompGraph/) folder. This version along with RGFLIM BoFP and MGFLIM BoFP (folder [M-GFLIM-BoFP](M-GFLIM-BoFP/)) are beta version that might not work well.
+
 ### Pre-processing
 
-- [iftCreateGFLIMGraph](iftCreateGFLIMGraph.c): Convert images into graphs for a GFLIM or GFLIM-BoFP model.
-- [iftGFLIMConvertSeeds](iftGFLIMConvertSeeds.c): Convert image-based markers to graph-based markers. Optionally, it also performs k-means on the graph markers if a number of feature points per marker > 0 is defined. The markers coordinates must be in "*-seeds.txt" files.
-- [iftGFLIMConvertSeeds_v2](GFLIM-BoFP/iftGFLIMConvertSeeds_v2.c): Convert image-based markers to graph-based markers, performs a k-means per graph marker, and another k-means per label. The markers coordinates must be in "*-seeds.txt" files. This program is only used for GFLIM-BoFP.
+For all versions, use [iftCreateGFLIMGraph](iftCreateGFLIMGraph.c) to convert images into graphs using superpixel segmentation. Or you can use your own tool for segmentation and convert the superpixel maps into graphs using [iftCreateGFLIMGraphFromLabels](iftCreateGFLIMGraphFromLabels.c). Alternatively, [iftGFLIMCreateNeighbMatricesAndGraphs](GFLIM_BoFP_precompGraph/iftGFLIMCreateNeighbMatricesAndGraphs) create graphs from images and their neighborhood matrices for all layers based on color similarity (i.e., when `kernel_neighbors`, `pool_neighbors`, and/or `kernel_neighbors` are set to `color`).
+
+### Seeds creation
+
+All GFLIM versions pixel labeled information to compute the kernels. The labeled information can be provided by the used through manually labeled markers or all pixels can be automatically extracted and labeled using ground-truth information.
+
+#### Seeds from user-drawn markers
+
+You can either use [iDSIF](https://github.com/IsabelaBB/iDISF) or other tool to manually draw markers on the training images and genate text with the markers information. The markers text files must have `ncoords width height` on the first row and `xcoord ycoord marker label handicap` on the remaining rows, in which `xcoord` and `ycoord` are the pixel coordinates, `label` is the class that pixel belongs, and `marker` and `handicap` are unused values maintained for compatibility with FLIM, set to -1 and 0, respectively.
+
+#### Seeds from all pixels
+
+Use [CreateSeedsFromAllPix](CreateSeedsFromAllPix.py) to create text files from the training images with all pixels labeled based on the class information on the image filenames.
+
+#### Creating graph seeds
+
+With the training graphs (and their respective superpixel images), the image seeds, and a architecture file (see [arch](archs/arch.json)), graph seed can be created using [iftGFLIMConvertSeeds](iftGFLIMConvertSeeds.c), [iftGFLIMConvertSeeds_v2](GFLIM-BoFP/iftGFLIMConvertSeeds_v2.c), or [iftGFLIMPrecConvertSeeds](GFLIM_BoFP_precompGraph/iftGFLIMPrecConvertSeeds.c). The standard option is [iftGFLIMConvertSeeds](iftGFLIMConvertSeeds.c).
 
 ### Training
 
-- [iftGFLIMTrainLayer](GFLIM/iftGFLIMTrainLayer.c): Train a layer model using GFLIM. It performs marker-based normalization on the graph-based markers, compute the kernel bank and apply convolution to extract features from the training graphs.
-- [iftGFLIMCreateLayerModel](GFLIM-BoFP/iftGFLIMCreateLayerModel.c): Create the model for a given layer using GFLIM-BoFP. It creates kernels, biases, and true labels per training image.
-- [iftGFLIMMergeLayerModels](GFLIM-BoFP/iftGFLIMMergeLayerModels.c): Merge the kernels, bias, and labels of a layer created by iftGFLIMCreateLayerModel.
-- [iftGFLIMEncodeLayer](GFLIM-BoFP/iftGFLIMEncodeLayer.c): Encode a layer using the non-merged kernels, bias, and labels created by iftGFLIMCreateLayerModel.
-- [iftGFLIMEncodeMergedLayer](GFLIM-BoFP/iftGFLIMEncodeMergedLayer.c): Encode a layer using the merged model created by iftGFLIMMergeLayerModels.
+> Note: Before trainig, you must to follow the previous steps.
+
+To train a model using GFLIM, simply use [iftGFLIMTrainLayer](GFLIM/iftGFLIMTrainLayer.c) for each layer.
+
+For the other versions, you must to follow the steps for each layer:
+
+- Create a layer model: Creates kernels, biases, and true labels per training image.
+- Merge layer models: Merge the kernels, bias, and labels in unified files.
+- Encode merged layer: Extract features from a training graphs using the merged files.
+
+Alternatively, you can also extract features from the training graphs before the merging using the "Encode layer" option.
+
+#### Create a layer model
+
+- [iftGFLIMCreateLayerModel](GFLIM-BoFP/iftGFLIMCreateLayerModel.c)
+- [iftGFLIMPrecCreateLayerModel](GFLIM_BoFP_precompGraph/iftGFLIMPrecCreateLayerModel.c)
+
+#### Encode layer
+
+- [iftGFLIMEncodeLayer](GFLIM-BoFP/iftGFLIMEncodeLayer.c)
+- [iftGFLIMEncodeLayerV3](GFLIM_BoFP_precompGraph/iftGFLIMEncodeLayerV3.c)
+
+#### Merge layer models
+
+- [iftGFLIMMergeLayerModels](GFLIM-BoFP/iftGFLIMMergeLayerModels.c):
+
+#### Encode merged models
+ 
+- [iftGFLIMEncodeMergedLayer](GFLIM-BoFP/iftGFLIMEncodeMergedLayer.c)
+- [iftGFLIMEncodeMergedLayerBatch](GFLIM-BoFP/iftGFLIMEncodeMergedLayerBatch.c)
+- [iftGFLIMEncodeMergedLayerV3](GFLIM_BoFP_precompGraph/iftGFLIMEncodeMergedLayerV3.c)
+- [iftGFLIMEncodeMergedLayerBatchV3](GFLIM_BoFP_precompGraph/iftGFLIMEncodeMergedLayerBatchV3.c)
+
+#### Handling skip layers and multiscale layers
+
+- [iftGFLIMSkipConnection](M-GFLIM-BoFP/iftGFLIMSkipConnection.c): Handle skip connections from a layer X to a layer X+Y. Merge the output of the layers based on the file `<model_dir>/model/kernels_map.txt` that contains the kernels mapping. The layers to be merged are specified in the architecture file. Used in RGFLIM and MGFLIM BoFP.
+- [iftGFLIMWriteKernelsCorrespondence](M-GFLIM-BoFP/iftGFLIMWriteKernelsCorrespondence.c): Writes a text file with the correspondence between the kernels of two layers. Used in RGFLIM and MGFLIM BoFP.
+- [iftGFLIMMergeScales](M-GFLIM-BoFP/iftGFLIMMergeScales.c): Merge scales based on a .txt file with the kernels mapping. Used in MGFLIM BoFP.
 
 ### Visualize a layer's output
 
-- [iftGFLIMWriteActivations](iftGFLIMWriteActivations.c): Write the activations of a GFLIM or a GFLIM-BoFP layer
+Use [iftGFLIMWriteActivations](iftGFLIMWriteActivations.c) to write the images activations from the output graphs of any GFLIM version.
 
 ### Decoding
 
-- [iftGFLIMDecodeLayer](iftGFLIMDecodeLayer.c): Decode a layer of a GFLIM or GFLIM-BoFP model
+There are a few automatic decoders to use with [iftGFLIMDecodeLayer](iftGFLIMDecodeLayer.c) for any GFLIM model. The decoders aggregate the information from the output graphs in one channel per class, creating saliency maps. These are usually used for object segmentation / detection.
 
-### Extracting features and decoding from a trained model
+### Extracting features
 
-- [iftGFLIMExtract](iftGFLIMExtract.c): Extract features from a set of images and decode from a GFLIM or a GFLIM-BoFP trained model.
+After training use the following programs to extract information from the validation/test data. These programs also allows to write the activation images and decode the output graphs.
 
-## Python scripts
+#### GFLIM, GFLIM BoFP, or RGFLIM BoFP
 
-The following files automate the training and inference of a model.
+- [iftGFLIMExtract](iftGFLIMExtract.c): Extract features from a set of images.
+- [iftGFLIMExtract2](iftGFLIMExtract2.c): Extract features from a set of graphs and superpixel maps.
 
-- [GFLIM-train](GFLIM/GFLIM-train.py): Train a GFLIM model and decode the features of each layer. It optionally writes the activation images of each layer.
-- [GFLIM-BoFP-train](GFLIM-BoFP/GFLIM-BoFP-train.py): Train a GFLIM-BoFP model and decode the features of each layer. It optionally writes the activation images of each layer.
-- [GFLIM-extract](GFLIM-extract.py): Extract features from a set of images and decode from a GFLIM or a GFLIM-BoFP trained model.
+#### GFLIM BoFP with neighbors based on color similarity
+
+- [iftGFLIMExtractV3](GFLIM_BoFP_precompGraph/iftGFLIMExtractV3.c): Extract features from a set of images. This version does NOT support residual connections and stride `IFT_GFLIM_IMAGESTRIDE`.
+
+#### MGFLIM BoFP
+
+- [iftGFLIMExtractMultiscale](M-GFLIM-BoFP/iftGFLIMExtractMultiscale.c): Extract features from a set of graphs and superpixel images, each with multiple segmentation scales.
+
+### Train an SVM and using it to classify
+
+Use [iftGFLIMActivDataSet](iftGFLIMActivDataSet) to convert the graphs created with a GFLIM-based model into vectors and write them in a .zip file in `iftDataset` format. Then, train an SVM with [iftSupTrainBySVM](Classification/iftSupTrainBySVM.c) and classify using [iftSupTrainBySVM](Classification/iftSupTrainBySVM.c). The training and classification use the aforementioned .zip file.

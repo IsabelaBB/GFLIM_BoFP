@@ -2,7 +2,8 @@
  * \file iftWriteSeedsVectors.c
  * \brief Write in txt files the feature vectors of the graph markers and the neighbors used
  * It does the same operations as in iftGFLIMConvertSeeds.c, but it only writes txt files with the feature vectors and neighbors.
- * \warning The image markers coordinates must be in "*-seeds.txt" files.
+ * \warning The image markers coordinates must be in "imagename-seeds.txt" files.
+ * \author Isabela Borlido
  */
 
 #include "ift.h"
@@ -10,7 +11,6 @@
 iftDataSet *iftGFLIMExtractMarkerDataSet_local(iftGFLIMGraph *graph,
                                          iftLabeledSet *S,
                                          int kernel_size,
-                                         iftGFLIMGraphAttention attention_opt,
                                          iftGFLIMAggregation aggregation_opt,
                                          iftMatrix *neighbor_matrix)
 {
@@ -25,7 +25,6 @@ iftDataSet *iftGFLIMExtractMarkerDataSet_local(iftGFLIMGraph *graph,
     else printf("\t S size: %d \n", iftLabeledSetSize(S));
     printf("\t kernel_size: %d\n", kernel_size);
     printf("\t most_similar: %s\n", most_similar ? "true" : "false");
-    printf("\t attention_opt: %d\n", attention_opt);
     printf("\t aggregation_opt: %d\n", aggregation_opt);
 #endif
 
@@ -59,7 +58,7 @@ iftDataSet *iftGFLIMExtractMarkerDataSet_local(iftGFLIMGraph *graph,
         if (Z->sample[s].truelabel > Z->nclasses)
             Z->nclasses = Z->sample[s].truelabel;
 
-        iftIntArray *neighbors = iftFLIMGraphGetKNeighborsAggregation(seed->elem, graph, kernel_neighbors, 1, true, attention_opt);
+        iftIntArray *neighbors = iftFLIMGraphGetKNeighborsAggregation(seed->elem, graph, kernel_neighbors, 1, true);
         
         for(int i = 0; i < neighbors->n; i++) {
             iftMatrixElem(neighbor_matrix, i, s) = neighbors->val[i];
@@ -85,14 +84,13 @@ iftDataSet *iftGFLIMExtractMarkerDataSet_local(iftGFLIMGraph *graph,
 int main(int argc, char *argv[]) {
     timer *tstart;
     
-    if (argc != 7)
-      iftError("Usage: iftReduceSeedSet <P1> <P2> <P3> <P4> <P5> <P6> \n"
+    if (argc != 6)
+      iftError("Usage: iftWriteSeedsVectors P1 P2 P3 P4 P5 \n"
 	       "P1: model folder\n"
 	       "P2: image markers folder \n"
          "P3: number of feature points per marker \n"
          "P4: kernel size \n"
-         "P5: attention option (NONE, NODE_SIZE, NEIGHB_SIMIL, NEIGHB_SIZE, ...) \n"
-         "P6: aggregation strategy (CONCAT, MEAN, WMEAN) \n"
+         "P5: aggregation strategy. See iftGFLIMAggregation at iftGFLIMGraph.h for more details \n"
 	       ,"main");
 
     tstart = iftTic();
@@ -101,15 +99,13 @@ int main(int argc, char *argv[]) {
     char *image_markers_dir = argv[2];
     int nfpts_per_marker = atoi(argv[3]);  
     int kernel_size = 0;
-    iftGFLIMGraphAttention attention_opt = IFT_FLIMGRAPH_ATTENTION_NONE;
     iftGFLIMAggregation aggregation_opt = IFT_GFLIM_AGGREGATION_CONCAT;
     
     if(nfpts_per_marker < 0)
       iftError("Kernel size must be greater than 0: %d", __func__, nfpts_per_marker);
     
     kernel_size = atoi(argv[4]);
-    attention_opt = iftGLIMGraphGetAttention(argv[5]);
-    aggregation_opt = iftGFLIMGraphGetAggregation(argv[6]);
+    aggregation_opt = iftGFLIMGraphGetAggregation(argv[5]);
     
     iftGFLIMDimReductionType dimReduction = IFT_GFLIM_DIMREDUCTION_NONE;
     int ncomponents = 1;
@@ -175,13 +171,37 @@ int main(int argc, char *argv[]) {
         iftGFLIMGraph *graph = iftReadGFLIMGraph(filename);
         
         int obj_label_map[graph->num_nodes];
-        iftGFLIMRelabelConnectedComponentsInPlace(graph, graph_seeds, obj_label_map);
+        int first_label = graph_seeds->marker;
+        bool all_same_label = true;
+        iftLabeledSet *tmp = graph_seeds;
+        while(tmp != NULL)
+        {
+            if(tmp->marker != first_label)
+            {
+                all_same_label = false;
+                break;
+            }
+            tmp = tmp->next;
+        }
+        // if all seeds have the same label and all graph nodes are seeds, do not relabel them.
+        if(iftLabeledSetSize(graph_seeds) != graph->num_nodes || !all_same_label)
+        {
+            iftGFLIMRelabelConnectedComponentsInPlace(graph, graph_seeds, obj_label_map);
+        }else{
+            tmp = graph_seeds;
+            while (tmp != NULL)
+            {
+                int p = tmp->elem;
+                obj_label_map[p] = tmp->label;
+                tmp->marker = 1;
+                tmp = tmp->next;
+            }
+        }
 
         // extract neighbor information and compute the iftDataSet
         iftMatrix *neighbor_matrix = iftCreateMatrix(kernel_size, iftLabeledSetSize(graph_seeds));
         iftDataSet *Z = iftGFLIMExtractMarkerDataSet_local(graph, graph_seeds, 
-                                                    kernel_size, attention_opt, 
-                                                    aggregation_opt, neighbor_matrix);
+                                                    kernel_size, aggregation_opt, neighbor_matrix);
 
         iftDestroyLabeledSet(&graph_seeds);
         iftDestroyGFLIMGraph(&graph);

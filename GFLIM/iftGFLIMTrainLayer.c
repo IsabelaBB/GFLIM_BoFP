@@ -3,8 +3,16 @@
 /**
  * \file iftGFLIMTrainLayer.c
  * \brief Train a layer model using GFLIM.
- * It performs marker-based normalization on the graph-based markers, 
- * compute the kernel bank and apply convolution to extract features from the training graphs.
+ * \details Let X+1 be the layer you want to train. If X > 0, this program already creates the folders needed. 
+ *      Otherwise, the model directory must contain the folders: 
+ *      1) layerX and labelsX with the training graphs and their corresponding superpixel images, respectively. 
+ *          Use iftCreateGFLIMGraph to create them from images or iftCreateGFLIMGraphFromLabels if you already have the superpixel images.
+ *      2) img_seeds with txt files containing the number of coordinates, image size, and the xy coordinates of the labeled pixels along with their marker label. 
+ *          Use FLIMBuilder in demo/Qt/FLIMBuilder or iDSIF from https://github.com/IsabelaBB/iDISF to create these files by manually adding markers on your training images. 
+ *          You can also use CreateSeedsFromAllPix.py to create a seed file with all the pixels as seeds. The class label in this case will be in the filename 
+ *          (i.e., image name "00001_0030.png" will have class label 1 for all pixels)
+ * \note You cannot run this program for layer 2 if you have not trained layer 1 yet.
+ * \author Isabela Borlido 
  */
 
 int main(int argc, char *argv[])
@@ -41,7 +49,7 @@ int main(int argc, char *argv[])
     }
     iftMakeDir(layer_output);
 
-    sprintf(seeds_dir, "%s/markers", model_dir);
+    sprintf(seeds_dir, "%s/img_seeds", model_dir);
     if(!iftDirExists(seeds_dir)){
         iftError("Seeds directory missing or does not exist: %s", "main", seeds_dir);
     }

@@ -1,6 +1,6 @@
 /**
  * \file iftGraphToMimg.c
- * \brief Convert GFLIM graphs to MImages
+ * \brief Convert GFLIM graphs to MImages (.mimg files)
  * \author Isabela Borlido
  */
 
@@ -11,7 +11,7 @@
 void usage()
 {
     printf(" Usage: \n");
-    printf("iftGraphToMimg <P1> <P2> <P3> \n");
+    printf("iftGraphToMimg P1 P2 P3 \n");
     printf("P1: graphs directory \n");
     printf("P2: superpixel images directory \n");
     printf("P3: output directory \n");

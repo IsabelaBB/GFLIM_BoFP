@@ -1,6 +1,7 @@
 /**
  * \file iftGFLIMMergeScales.c
  * \brief Merge layers or scales based on a .txt file with the kernels mapping
+ * \author Isabela Borlido
  */
 
 #include "ift.h"
@@ -176,14 +177,6 @@ void iftGFLIMMergeScales(int layer, char *kernels_file, char *model_dir, iftFile
 {
     // compute the kernel maps for the layers that will be used in the skip connection
     iftIntArray **kernels_maps = iftGFLIMCompute_kernel_maps_scales(kernels_file); // compute the kernel maps for all layers
-    /*printf("number of scales: %ld\n", list_superpixels->n);
-    for(int i = 0; i < list_superpixels->n; i++)
-    {
-        printf("scale %d: %ld kernels: \n", list_superpixels->val[i], kernels_maps[i]->n);
-        for(int j = 0; j < kernels_maps[i]->n; j++)
-            printf("%d ", kernels_maps[i]->val[j]);
-        printf("\n");
-    }*/
 
     char filename[512];
     sprintf(filename, "%s/layer%d", model_dir, layer);
@@ -306,7 +299,7 @@ int main(int argc, char *argv[]) {
     timer *tstart;
     
     if (argc != 7)
-      iftError("Usage: iftGFLIMMergeScales <P1> <P2> <P3> <P4> <P5> <P6>\n"
+      iftError("Usage: iftGFLIMMergeScales P1 P2 P3 P4 P5 P6\n"
 		"P1: images folder\n"
         "P2: list of superpixels\n"
         "P3: model folder\n"

@@ -1,4 +1,10 @@
 #include "iftGFLIMGraph.h"
+/**
+ * \file iftRGBBucketDescriptor.c
+ * \brief Create GFLIM graphs using the RGB Bucket Descriptor
+ * \note The RGB Bucket Descriptor is part of the SIRS, a evaluation metric used in superpixel segmentations: https://github.com/IsabelaBB/SIRS-superpixels
+ * \author Isabela Borlido
+ */
 
 /*
 spx:
@@ -207,7 +213,7 @@ iftMImage *RGBBucketDescriptor(iftMImage *original_img_rgb, iftImage *labeled_im
 void usage()
 {
     printf(" Usage: \n");
-    printf("iftRGBBucketDescriptor <P1> <P2> <P3> <P4> <P5> \n");
+    printf("iftRGBBucketDescriptor P1 P2 P3 P4 P5 \n");
     printf("P1: images diretory \n");
     printf("P2: superpixel images directory \n");
     printf("P3: number of buckets \n");

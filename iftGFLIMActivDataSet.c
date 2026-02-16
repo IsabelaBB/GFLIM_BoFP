@@ -1,47 +1,12 @@
 /**
  * \file iftGFLIMActivDataSet.c
- * \brief Create GFLIM graph dataset from activation graphs.
+ * \brief Create an iftDataset (a .zip file) from GFLIM activation graphs.
+ * \note The class labels are read from the images names. The image names must have the format classlabel_imagename.ext (e.g, 001_0002.png, where 1 is the class label and 2 is the image name).
+ * \note The graphs must be in .json format and have the same name as the original image.
  * \author Isabela Borlido
  */
 
 #include "ift.h"
-
-iftMImage *CropMImageBorder(iftMImage *img, int border_size)
-{
-  iftVoxel u;
-  iftMImage *crop;
-
-  if (iftIs3DMImage(img))
-  {
-    crop = iftCreateMImage(img->xsize - 2 * border_size, img->ysize - 2 * border_size, img->zsize - 2 * border_size, img->m);
-    int q = 0;
-    for (u.z = border_size; u.z < img->zsize - border_size; u.z++)
-      for (u.y = border_size; u.y < img->ysize - border_size; u.y++)
-        for (u.x = border_size; u.x < img->xsize - border_size; u.x++)
-        {
-          int p = iftMGetVoxelIndex(img, u);
-          for (int b = 0; b < img->m; b++)
-            crop->val[q][b] = img->val[p][b];
-          q++;
-        }
-  }
-  else
-  {
-    crop = iftCreateMImage(img->xsize - 2 * border_size, img->ysize - 2 * border_size, img->zsize, img->m);
-    int q = 0;
-    u.z = 0;
-    for (u.y = border_size; u.y < img->ysize - border_size; u.y++)
-      for (u.x = border_size; u.x < img->xsize - border_size; u.x++)
-      {
-        int p = iftMGetVoxelIndex(img, u);
-        for (int b = 0; b < img->m; b++)
-          crop->val[q][b] = img->val[p][b];
-        q++;
-      }
-  }
-
-  return (crop);
-}
 
 void iftCreateImgRefData(char *origImgsDir, char *imgBasename, char *origImgExt, iftFileSet *fsRefData, int fileId)
 {
@@ -67,11 +32,11 @@ int main(int argc, char *argv[])
   timer *tstart = NULL;
 
   if (argc != 4 && argc != 5)
-    iftError("Usage: iftGFLIMActivDataSet <...>\n"
-             "[1] input activation graphs\n"
-             "[2] path of the original images\n"
-             "[3] output_status: Status for the output dataset (1: Train, 2: Test)\n"
-             "[4] (optional) average activations and sort superpixels (1: average all channels, filename: average per class)\n"
+    iftError("Usage: iftGFLIMActivDataSet P1 P2 P3 [P4]\n"
+             "P1 : input activation graphs\n"
+             "P2 : path of the original images\n"
+             "P3 : output_status: Status for the output dataset (1: Train, 2: Test)\n"
+             "P4 : (optional) whether to sort node features based on intensity per channel (1 or 0)\n"
              "argc = %d", __func__, argc);
 
   tstart = iftTic();
@@ -79,9 +44,7 @@ int main(int argc, char *argv[])
   iftFileSet *fs = iftLoadFileSetFromDirBySuffix(argv[1], ".json", 1);
   iftFileSet *fsAux = iftLoadFileSetFromDirOrCSV(argv[2], 1, 1);
   iftSampleStatus outStatus = atoi(argv[3]) == 1 ? IFT_TRAIN : IFT_TEST;
-  //int *true_labels = NULL;
-  //int nkernels = 0, minlabel = 0, maxlabel = 0;
-  bool average_act = false;
+  bool sort_feats = false;
   char filename[1024];
 
   if (argc > 4)
@@ -89,12 +52,8 @@ int main(int argc, char *argv[])
     if(atoi(argv[4]) != 1)
     {
       iftError("Not implemented: average activations per class from file '%s'", __func__, argv[4]);
-      /*if(!iftFileExists(argv[4]))
-        iftError("The provided filename for true labels does not exist: %s", __func__, argv[4]);
-      true_labels = iftGFLIMLoadKernelLabels(argv[4], &nkernels);
-      */
     }
-    average_act = true;
+    sort_feats = true;
   }
 
   char *origImgsDir = NULL, *origImgExt = NULL;
@@ -139,7 +98,7 @@ int main(int argc, char *argv[])
     Z->sample[i].id = i;
     Z->sample[i].truelabel = fs->files[i]->label;
     
-    if(average_act)
+    if(sort_feats)
     {
       float *ch_feat = iftAllocFloatArray(graph->num_nodes);
       int *index = iftAllocIntArray(graph->num_nodes);

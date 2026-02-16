@@ -3,6 +3,7 @@
  * \brief Merge the output of different layers based on a .txt file
  *       with the kernels mapping in "<model_dir>/model/kernels_map.txt".
  *       The layers to be merged are specified in the arch file.
+ * \author Isabela Borlido
  */
 
 #include "ift.h"
@@ -12,7 +13,7 @@ int main(int argc, char *argv[])
     timer *tstart;
 
     if (argc != 5)
-        iftError("Usage: iftGFLIMSkipConnection <P1> <P2> <P3> <P4> \n"
+        iftError("Usage: iftGFLIMSkipConnection P1 P2 P3 P4 \n"
                  "P1: model folder\n"
                  "P2: images folder \n"
                  "P3: arch file (.json) \n"

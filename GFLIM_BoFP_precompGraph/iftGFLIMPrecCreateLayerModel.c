@@ -1,28 +1,27 @@
 #include "ift.h"
 
 /**
- * \file iftGFLIMCreateLayerModel.c
+ * \file iftGFLIMPrecCreateLayerModel.c
  * \brief Create the model for a given layer using GFLIM-BoFP.
  * It creates kernels, biases, and true labels per training image.
  * \note The kernels, biases, and true labels are saved in the model directory per training image. To merge them use iftGFLIMMergeLayerModel.
+ * \note Used when kernel_neighbors and stride_neighbors are either "act" or "color" (i.e., computed using activation or color information).
+ * \author Isabela Borlido
  */
-
-// usado quando kernel_neighbors == "color" ou stride_neighbors == "color"
-// mas funciona quando sao "act" também
 
 int main(int argc, char *argv[])
 {
     timer *tstart;
 
     if (argc != 9)
-        iftError("Usage: iftGFLIMGSCreateLayerModel <P1> <P2> <P3> <P4> <P5> <P6> <P7> <P8> \n"
+        iftError("Usage: iftGFLIMPrecCreateLayerModel P1 P2 P3 P4 P5 P6 P7 P8 \n"
                  "P1: model directory\n"
                  "P2: network architecture (.json)\n"
-                 "P3: layer number (1, 2, 3, etc)\n"
+                 "P3: layer number (>0)\n"
                  "P4: kernel neighbors type (color, act)\n"
                  "P5: stride neighbors type (color, act)\n"
-                 "P6: graph feature (MEAN, SUM) \n"
-                 "P7: aggregation option \n"
+                 "P6: graph feature. See iftGFLIMGraphNodeFeature at iftGFLIMGraph.h for more details \n"
+                 "P7: aggregation option. See iftGFLIMAggregation at iftGFLIMGraph.h for more details \n"
                  "P8: original images path \n"
                  ,
                  "main");

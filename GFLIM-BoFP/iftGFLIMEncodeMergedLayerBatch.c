@@ -1,9 +1,10 @@
 #include "ift.h"
 
 /**
- * \file iftGFLIMGSEncodeMergedLayerBatch.c
+ * \file iftGFLIMEncodeMergedLayerBatch.c
  * \brief Encode the layer using the merged kernels, bias, and labels
  * \note It does not decode the layer
+ * \author Isabela Borlido
  */
 
 void processBatch(iftFileSet *fs,
@@ -24,7 +25,6 @@ void processBatch(iftFileSet *fs,
     char *basename[batchsize];
     char filename[1024];
 
-    //printf("Reading graphs and superpixel labels...\n");
     /* read graphs and superpixel labels */
     iftGFLIMGraphArray *input_graph = iftCreateGFLIMGraphArray(batchsize);
     iftImageArray *label_imgs = iftCreateImageArray(batchsize);
@@ -36,14 +36,12 @@ void processBatch(iftFileSet *fs,
         label_imgs->val[j] = iftReadImageByExt(filename);
     }
 
-    //printf("Encoding layer...\n");
     // encode layer
     iftGFLIMEncodeLayerBatch(input_graph, Kmerged, layer,
                              label_imgs, bias_merged, stride_type, 
                              attention_opt, true_labels, 
                              aggregation_opt, kernel_removal);
 
-    //printf("Saving output...\n");
     /* save output */
     for (int j = 0; j < batchsize; j++)
     {
@@ -65,15 +63,15 @@ int main(int argc, char *argv[])
     timer *tstart;
 
     if (argc != 8 && argc != 9)
-        iftError("Usage: iftGFLIMGSEncodeMergedLayerBatch <P1> <P2> <P3> <P4> <P5> <P6> <P7> [<P8>] \n"
-                 "[1] model directory \n"
-                 "[2] architecture of the network (.json) \n"
-                 "[3] layer number (1, 2, 3) \n"
-                 "[4] batch size (1, 8, 16, 32, etc) \n"
-                 "[5] stride type (none, image-based, graph-based) \n"
-                 "[6] attention (NONE, NODE_SIZE, NEIGHB_SIMIL, NEIGHB_SIZE) \n"
-                 "[7] aggregation (CONCAT, MEAN, WMEAN) \n"
-                 "[8] reduce output channels based on attention values (1/0). It is necessary a compatible attention mechanism \n",
+        iftError("Usage: iftGFLIMEncodeMergedLayerBatch P1 P2 P3 P4 P5 P6 P7 [P8] \n"
+                 "P1: model directory\n"
+                 "P2: network architecture (.json)\n"
+                 "P3: layer number (1, 2, 3)\n"
+                 "P4: batch size (1, 8, 16, 32, etc)\n"
+                 "P5: stride type. See iftGFLIMStrideType at iftGFLIM_BoFP.h for more details \n"
+                 "P6: attention. See iftGFLIMGraphAttention at iftGFLIMGraph.h for more details \n"
+                 "P7: aggregation. See iftGFLIMAggregation at iftGFLIMGraph.h for more details \n"
+                 "P8: reduce output channels based on attention values (1/0). It is necessary a compatible attention mechanism \n",
                  "main");
 
     tstart = iftTic();
@@ -162,7 +160,7 @@ int main(int argc, char *argv[])
     int nremaining_graphs = fs->n - nbatches * batchsize;
 
     /* Encode layer with merged model */
-    //printf("\n");
+    printf("\n");
     for (int batch = 0; batch < nbatches; batch++)
     {
         printf("Processing batch %d of %d batches\r", batch + 1, nbatches);

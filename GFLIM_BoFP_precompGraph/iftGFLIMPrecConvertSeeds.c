@@ -1,11 +1,11 @@
 /**
- * \file iftGFLIMConvertSeeds.c
+ * \file iftGFLIMPrecConvertSeeds.c
  * \brief Convert image-based markers to graph-based markers.
  * Optionally, it also performs k-means on the graph markers if a number of feature points per marker > 0 is defined.
- * \warning The markers coordinates must be in "*-seeds.txt" files.
+ * \note Used when kernel_neighbors == "color" (i.e., neighbors are computed based on color similarity)
+ * \warning The markers coordinates must be in "imagename-seeds.txt" files.
+ * \author Isabela Borlido
  */
-
-// usado quando kernel_neighbors == "color"
 
 #include "ift.h"
 
@@ -14,12 +14,12 @@ int main(int argc, char *argv[])
     timer *tstart;
 
     if (argc != 6)
-        iftError("Usage: iftReduceSeedSet <P1> <P2> <P3> <P4> <P5> \n"
+        iftError("Usage: iftGFLIMPrecConvertSeeds P1 P2 P3 P4 P5 \n"
                  "P1: model folder\n"
                  "P2: image markers folder \n"
                  "P3: number of feature points per marker (if -1, do not perform k-means and P4 value is ignored) \n"
                  "P4: kernel size \n"
-                 "P5: aggregation option \n",
+                 "P5: aggregation. See iftGFLIMAggregation at iftGFLIMGraph.h for more details \n",
                  "main");
 
     tstart = iftTic();
@@ -100,8 +100,7 @@ int main(int argc, char *argv[])
                 for(int p = 0; p < graph->num_nodes; p++)
                 {
                     iftIntArray *neighb_arr = iftFLIMGraphGetKNeighborsAggregation(p, graph, kernel_size, 
-                                                                                1, true, 
-                                                                                IFT_FLIMGRAPH_ATTENTION_NONE);
+                                                                                1, true);
                     
                     for(int n = 0; n < kernel_size; n++)
                         iftMatrixElem(neighbors, n, p) = neighb_arr->val[n];

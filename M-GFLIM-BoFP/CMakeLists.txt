@@ -1,6 +1,14 @@
-add_executable(iftGFLIMWriteKernelsCorrespondence iftGFLIMWriteKernelsCorrespondence.c)
-target_link_libraries(iftGFLIMWriteKernelsCorrespondence ift)
+add_executable(iftGFLIMExtractMultiscale iftGFLIMExtractMultiscale.c)
+target_link_libraries(iftGFLIMExtractMultiscale ift)
 
 add_executable(iftGFLIMMergeScales iftGFLIMMergeScales.c)
 target_link_libraries(iftGFLIMMergeScales ift)
+
+add_executable(iftGFLIMSkipConnection iftGFLIMSkipConnection.c)
+target_link_libraries(iftGFLIMSkipConnection ift)
+
+add_executable(iftGFLIMWriteKernelsCorrespondence iftGFLIMWriteKernelsCorrespondence.c)
+target_link_libraries(iftGFLIMWriteKernelsCorrespondence ift)
+
+
 

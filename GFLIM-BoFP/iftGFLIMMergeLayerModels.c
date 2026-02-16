@@ -3,6 +3,7 @@
 /**
  * \file iftGFLIMMergeLayerModels.c
  * \brief Merge the kernels, bias, and labels of a layer created by iftGFLIMCreateLayerModel.
+ * \author Isabela Borlido
  */
 
 int main(int argc, char *argv[])
@@ -10,9 +11,9 @@ int main(int argc, char *argv[])
     timer *tstart;
 
     if (argc != 3)
-        iftError("Usage: iftGFLIMMergeLayerModels <P1> <P2> \n"
-                 "[1] model directory \n"
-                 "[2] layer number (1, 2, 3) \n",
+        iftError("Usage: iftGFLIMMergeLayerModels P1 P2 \n"
+                 "P1 : model directory \n"
+                 "P2 : layer number (1, 2, 3) \n",
                  "main");
 
     tstart = iftTic();

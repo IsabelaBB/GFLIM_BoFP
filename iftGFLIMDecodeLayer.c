@@ -1,7 +1,9 @@
 #include "ift.h"
 
 /**
- * @brief Decode a layer of a GFLIM or GFLIM-BoFP model.
+ * \file iftGFLIMDecodeLayer.c
+ * \brief Decode a layer of a GFLIM or GFLIM-BoFP model.
+ * \author Isabela Borlido
  */
 
 void validateArgs(int layer, char *model_dir, iftGFLIMDecoderType decoder, iftGFLIMStrideType stride_type, 
@@ -35,36 +37,9 @@ void validateArgs(int layer, char *model_dir, iftGFLIMDecoderType decoder, iftGF
     if (batchsize < 1)
         iftError("Batch size must be greater than 0", "main");
 
-    switch (decoder)
-    {
-    case IFT_GFLIM_TRISTATE_DECODER:
-        sprintf(output_dir, "%s/tristate_%d", model_dir, layer);
-        break;
-    
-    case IFT_GFLIM_HYBRID_DECODER:
-        sprintf(output_dir, "%s/hybrid_%d", model_dir, layer);
-        break;
-
-    case IFT_GFLIM_GRAPHADAPTIVE_DECODER:
-        sprintf(output_dir, "%s/graph-adaptive_%d", model_dir, layer);
-        break;
-
-    case IFT_GFLIM_GAUSSIAN_DECODER:
-        sprintf(output_dir, "%s/gaussian_%d", model_dir, layer);
-        break;
-    
-    case IFT_GFLIM_TEST_DECODER:
-        sprintf(output_dir, "%s/test_%d", model_dir, layer);
-        break;
-    
-    case IFT_GFLIM_MEAN_DECODER:
-        sprintf(output_dir, "%s/mean_%d", model_dir, layer);
-        break;
-
-    default:
-        iftError("Invalid decoder type: %d", "main", decoder);
-        break;
-    }
+    char *decoder_name = iftGFLIMDecoderToString(decoder); // validate decoder type
+    sprintf(output_dir, "%s/%s_%d", model_dir, decoder_name, layer);
+    iftFree(decoder_name);
 }
 
 void ProcessBatch(iftFileSet *fs, int first, int last, 
@@ -159,13 +134,13 @@ int main(int argc, char *argv[])
 {
     if (argc != 7)
     {
-        iftError("Usage: iftGFLIMGSDecodeLayer <P1> <P2> <P3> <P4> <P5> <P6> \n"
-                 "[1] model directory \n"
-                 "[2] layer number (1, 2,..) \n"
-                 "[3] architecture of the network\n"
-                 "[4] decoder type (tristate, hybrid, graph-adaptive, gaussian)\n"
-                 "[5] stride type (none, image-based, graph-based)\n"
-                 "[6] batch size \n",
+        iftError("Usage: iftGFLIMGSDecodeLayer P1 P2 P3 P4 P5 P6 \n"
+                 "P1 : model directory \n"
+                 "P2 : layer number (> 0) \n"
+                 "P3 : architecture of the network\n"
+                 "P4 : decoder type. See iftGFLIMDecoderType in iftGFLIM_BoFP.h for details\n"
+                 "P5 : stride type. See iftGFLIMStrideType in iftGFLIM_BoFP.h for details\n"
+                 "P6 : batch size (> 0) \n",
                  "main");
     }
 
@@ -174,7 +149,7 @@ int main(int argc, char *argv[])
     char *model_dir = argv[1];
     int layer = atoi(argv[2]);
     iftGFLIMArch *arch = iftReadGFLIMArch(argv[3]);
-    iftGFLIMDecoderType decoder = iftGLFLIMGetDecoderType(argv[4]);
+    iftGFLIMDecoderType decoder = iftGFLIMGetDecoderType(argv[4]);
     iftGFLIMStrideType stride_type = iftGFLIMGetStrideType(argv[5]);
     int batchsize = atoi(argv[6]);
 

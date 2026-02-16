@@ -3,22 +3,23 @@
 /**
  * \file iftGFLIMCreateNeighbMatricesAndGraphs.c
  * \brief Create graphs from images and their neighborhood matrices for all layers
- * \details 
+ * \note Used when stride_neighbors == "color", since the neighbors are computed 
+ *      based on the color similarity of the superpixels, which does not change with the architecture. 
+ *      In this case, we compute the neighbors matrices for all layers and save them in files, 
+ *      so they can be reused during training and inference.
  * \author Isabela Borlido
  */
-
-// usado quando stride_neighbors == "color"
 
 void usage()
 {
     printf(" Usage: \n");
-    printf("iftGFLIMCreateNeighbMatricesAndGraphs <P1> <P2> <P3> <P4> <P5> <P6> <P7> <P8> <P9> <P10> <P11> \n");
+    printf("iftGFLIMCreateNeighbMatricesAndGraphs P1 P2 P3 P4 P5 P6 P7 P8 P9 P10 P11 \n");
     printf("P1: images diretory \n");
     printf("P2: number of superpixels \n");
     printf("P3: initial number of seeds \n");
     printf("P4: model folder \n");
-    printf("P5: Graph feature (MEAN, SUM, SUM_MULT_RELSIZE, SUM_CONCAT_RELSIZE). See iftGFLIMGraphNodeFeature at iftGFLIMGraph.h for details \n");
-    printf("P6: Architecture file \n");
+    printf("P5: Graph feature. See iftGFLIMGraphNodeFeature at iftGFLIMGraph.h for details \n");
+    printf("P6: Architecture file (json file) \n");
     printf("P7: use mask (boolean) \n");
     printf("P8: fixed number of superpixels (boolean) \n");
     printf("P9: kernel neighbors type (color, act) \n");
@@ -132,16 +133,6 @@ int main(int argc, char *argv[])
             iftGFLIMGraph *graph = iftImageToGFLIMGraph(orig_image, final_spx_img, initial_seeds_img, 
                                                     &label_img, graph_feat, IFT_FLIMGRAPH_TYPE_DISF,
                                                     mask_img);
-            
-            /*if(l == 0 && strcmp(basename, "000002_00000014") == 0)
-            {
-                printf("Image %s, layer %d, num nodes: %d, num edges: %d, num feats: %d\n", 
-                    basename, l+1, graph->num_nodes, graph->num_edges, graph->num_feats);
-                printf("Node 0: ");
-                for(int f = 0; f < graph->num_feats; f++)
-                    printf("%f ", graph->nodes[0].feats[f]);
-                printf("\n");
-            }*/
 
             if(strcmp(kernel_neighbors, "color") == 0 || strcmp(pool_neighbors, "color") == 0)
             {

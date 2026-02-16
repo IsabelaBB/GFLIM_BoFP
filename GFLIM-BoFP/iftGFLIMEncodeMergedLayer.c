@@ -3,6 +3,7 @@
 /**
  * \file iftGFLIMEncodeMergedLayer.c
  * \brief Encode a layer using the merged model created by iftGFLIMMergeLayerModels.
+ * \author Isabela Borlido
  */
 
 int main(int argc, char *argv[])
@@ -10,14 +11,14 @@ int main(int argc, char *argv[])
     timer *tstart;
 
     if (argc != 8 && argc != 7)
-        iftError("Usage: iftGFLIMGSEncodeMergedLayer <P1> <P2> <P3> <P4> <P5> <P6> [<P7>] \n"
-                 "[1] model directory \n"
-                 "[2] architecture of the network (.json) \n"
-                 "[3] layer number (1, 2, 3) \n"
-                 "[4] stride type (none, image-based, graph-based) \n"
-                 "[5] attention (NONE, NODE_SIZE, NEIGHB_SIMIL, NEIGHB_SIZE, ...) \n"
-                 "[6] aggregation (CONCAT, MEAN, WMEAN) \n"
-                 "[7] reduce output channels based on attention values (1/0). It is necessary a compatible attention mechanism \n",
+        iftError("Usage: iftGFLIMEncodeMergedLayer P1 P2 P3 P4 P5 P6 [P7] \n"
+                 "P1: model directory\n"
+                 "P2: network architecture (.json)\n"
+                 "P3: layer number (1, 2, 3)\n"
+                 "P4: stride type. See iftGFLIMStrideType at iftGFLIM_BoFP.h for more details \n"
+                 "P5: attention. See iftGFLIMGraphAttention at iftGFLIMGraph.h for more details \n"
+                 "P6: aggregation. See iftGFLIMAggregation at iftGFLIMGraph.h for more details \n"
+                 "P7: reduce output channels based on attention values (1/0). It is necessary a compatible attention mechanism \n",
                  "main");
 
     tstart = iftTic();
